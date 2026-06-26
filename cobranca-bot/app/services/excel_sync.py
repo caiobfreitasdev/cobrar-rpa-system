@@ -40,7 +40,8 @@ def _clean_str(value: Any) -> Optional[str]:
         return None
     if pd.isna(value):
         return None
-    return str(value).strip()
+    texto = str(value).strip()
+    return texto or None
 
 
 def _clean_float(value: Any) -> Optional[float]:
@@ -62,9 +63,15 @@ def _clean_date(value: Any) -> Optional[str]:
         return None
     if isinstance(value, (datetime, pd.Timestamp)):
         return value.strftime("%Y-%m-%d")
-    # Tenta parsear string
+    # Tenta parsear string: primeiro ISO (YYYY-MM-DD), depois formato BR (dd/mm/aaaa)
+    texto = str(value).strip()
+    for fmt in ("%Y-%m-%d", "%d/%m/%Y", "%d/%m/%y"):
+        try:
+            return datetime.strptime(texto, fmt).strftime("%Y-%m-%d")
+        except ValueError:
+            continue
     try:
-        return pd.to_datetime(value, dayfirst=True).strftime("%Y-%m-%d")
+        return pd.to_datetime(texto, dayfirst=True).strftime("%Y-%m-%d")
     except Exception:
         return _clean_str(value)
 
