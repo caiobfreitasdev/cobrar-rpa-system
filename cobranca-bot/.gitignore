@@ -1,0 +1,21 @@
+# Credenciais e dados sensiveis
+.env
+
+# Banco de dados local
+data/*.db
+
+# Dados fiscais
+*.xlsx
+*.xls
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# Build / PyInstaller
+dist/
+build/
+# build.spec  # versionar o spec; descomente para ignorar

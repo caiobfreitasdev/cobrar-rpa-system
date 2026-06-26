@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bot de Cobranca</title>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-title">
+      <h1>Bot de Cobranca</h1>
+      <span class="subtitle">Contas a receber &middot; envio manual com confirmacao</span>
+    </div>
+    <div class="topbar-actions">
+      <button id="btn-reload" class="btn btn-secondary">Recarregar planilha</button>
+      <button id="btn-lote" class="btn btn-primary" disabled>Enviar lote (<span id="sel-count">0</span>)</button>
+    </div>
+  </header>
+
+  <div class="layout">
+    <main class="content">
+      <section class="cards" id="cards"></section>
+
+      <section class="toolbar">
+        <div class="filters">
+          <label>Status de envio:
+            <select id="filter-status">
+              <option value="">Todos</option>
+              <option value="nao_cobrado">Nao cobrado</option>
+              <option value="cobrado">Cobrado</option>
+            </select>
+          </label>
+          <label class="check-inline">
+            <input type="checkbox" id="filter-ordenar" checked> Ordenar por dias de atraso
+          </label>
+        </div>
+        <div class="sel-info" id="sel-info"></div>
+      </section>
+
+      <section class="table-wrap">
+        <table class="grid">
+          <thead>
+            <tr>
+              <th class="col-check"><input type="checkbox" id="check-all"></th>
+              <th>Cliente</th>
+              <th>Titulo</th>
+              <th class="num">Total Atualizado</th>
+              <th>Vencimento</th>
+              <th class="num">Dias Atraso</th>
+              <th>E-mail</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="tbody">
+            <tr><td colspan="8" class="empty">Carregando...</td></tr>
+          </tbody>
+        </table>
+      </section>
+    </main>
+
+    <aside class="sidebar">
+      <div class="panel">
+        <h2>Ultima carga</h2>
+        <div id="carga-resumo" class="carga-resumo">
+          <p class="muted">Recarregue a planilha para sincronizar.</p>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Pendencias antes de producao</h2>
+        <ul id="pendencias-list" class="pendencias"></ul>
+      </div>
+
+      <div class="panel">
+        <h2>Status</h2>
+        <div id="status-panel" class="status-panel"></div>
+      </div>
+    </aside>
+  </div>
+
+  <!-- Modal de confirmacao de lote -->
+  <div class="modal-overlay" id="modal" hidden>
+    <div class="modal">
+      <h2>Confirmar envio de lote</h2>
+      <div id="modal-summary" class="modal-summary"></div>
+      <div class="modal-list-wrap">
+        <table class="grid grid-compact">
+          <thead>
+            <tr><th>Cliente</th><th>Titulo</th><th>E-mail</th></tr>
+          </thead>
+          <tbody id="modal-tbody"></tbody>
+        </table>
+      </div>
+      <p class="modal-warn" id="modal-warn"></p>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" id="modal-cancel">Cancelar</button>
+        <button class="btn btn-primary" id="modal-confirm">Confirmar e enviar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast" hidden></div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
