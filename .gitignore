@@ -1,0 +1,38 @@
+# ===== Credenciais e dados sensiveis (NUNCA commitar) =====
+.env
+**/.env
+*.env
+
+# ===== Banco de dados local =====
+**/data/*.db
+*.db
+*.sqlite
+*.sqlite3
+
+# ===== Dados fiscais / planilhas =====
+*.xlsx
+*.xls
+*.csv
+
+# ===== Python =====
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+.venv/
+venv/
+env/
+*.egg-info/
+
+# ===== Build / PyInstaller =====
+dist/
+build/
+*.manifest
+
+# ===== Sistema / IDE =====
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store
+desktop.ini
