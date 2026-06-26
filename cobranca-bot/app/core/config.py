@@ -16,6 +16,19 @@ def _base_dir() -> Path:
 
 BASE_DIR = _base_dir()
 
+
+def resource_path(*parts: str) -> Path:
+    """Resolve caminho de recursos empacotados (templates, web).
+
+    No exe (PyInstaller onefile) os dados ficam em sys._MEIPASS; em
+    desenvolvimento, na raiz do projeto.
+    """
+    if getattr(sys, "frozen", False):
+        base = Path(getattr(sys, "_MEIPASS", BASE_DIR))
+    else:
+        base = Path(__file__).resolve().parents[2]
+    return base.joinpath(*parts)
+
 # Procura o .env ao lado do executavel/projeto
 load_dotenv(BASE_DIR / ".env")
 

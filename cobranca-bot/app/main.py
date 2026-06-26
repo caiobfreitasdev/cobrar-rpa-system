@@ -1,7 +1,6 @@
 """Inicializa FastAPI + pywebview (app desktop local)."""
 import sys
 import threading
-from pathlib import Path
 
 import uvicorn
 from fastapi import FastAPI
@@ -9,9 +8,10 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.api.routes import router
+from app.core.config import resource_path
 from app.core.db import init_db
 
-WEB_DIR = Path(__file__).resolve().parent / "web"
+WEB_DIR = resource_path("app", "web")
 
 HOST = "127.0.0.1"
 PORT = 8756

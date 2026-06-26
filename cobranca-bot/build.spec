@@ -7,7 +7,7 @@ arquivos web do dashboard.
 Uso:
     pyinstaller build.spec
 """
-from PyInstaller.utils.hooks import collect_submodules
+from PyInstaller.utils.hooks import collect_submodules, collect_all
 
 block_cipher = None
 
@@ -15,17 +15,25 @@ datas = [
     ("app/templates", "app/templates"),
     ("app/web", "app/web"),
 ]
-
+binaries = []
 hiddenimports = (
     collect_submodules("uvicorn")
     + collect_submodules("webview")
-    + ["openpyxl", "pandas"]
+    + ["openpyxl"]
 )
+
+# numpy/pandas carregam C-extensions e dados que precisam ser coletados
+# integralmente (senao o exe quebra com "numpy._core._exceptions").
+for pkg in ("numpy", "pandas"):
+    d, b, h = collect_all(pkg)
+    datas += d
+    binaries += b
+    hiddenimports += h
 
 a = Analysis(
     ["app/main.py"],
     pathex=["."],
-    binaries=[],
+    binaries=binaries,
     datas=datas,
     hiddenimports=hiddenimports,
     hookspath=[],

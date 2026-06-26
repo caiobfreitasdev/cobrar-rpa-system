@@ -3,14 +3,13 @@ import re
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from pathlib import Path
 
-from app.core.config import settings
+from app.core.config import settings, resource_path
 from app.core.db import db_session
 from app.services.titulos import buscar_por_ids
 from app.rules import pendencias
 
-TEMPLATE_PATH = Path(__file__).resolve().parents[1] / "templates" / "email_cobranca.html"
+TEMPLATE_PATH = resource_path("app", "templates", "email_cobranca.html")
 
 # Bloco condicional do link de pagamento, delimitado por marcadores no template:
 #   {% if link_cobranca %} ... {% endif %}
