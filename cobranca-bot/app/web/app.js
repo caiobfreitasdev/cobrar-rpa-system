@@ -69,13 +69,31 @@ function renderCarga(resumo) {
 
 function renderStatus(resumo) {
   const box = document.getElementById("status-panel");
-  const smtp = resumo.smtp_configurado;
+  const graph = resumo.graph_configurado;
   const c = resumo.ultima_carga || {};
   box.innerHTML = `
-    <div class="line"><span>SMTP</span><span class="${smtp ? "ok" : "bad"}">${smtp ? "Configurado" : "Nao configurado"}</span></div>
+    <div class="line"><span>Microsoft Graph</span><span class="${graph ? "ok" : "bad"}">${graph ? "Configurado" : "Nao configurado"}</span></div>
+    <div class="line"><span>Remetente</span><span class="muted">${resumo.graph_sender || "-"}</span></div>
     <div class="line"><span>Coluna Email</span><span class="${c.email_disponivel ? "ok" : "bad"}">${c.email_disponivel ? "Presente" : "Ausente"}</span></div>
     <div class="line"><span>Coluna Link</span><span class="${c.link_disponivel ? "ok" : "bad"}">${c.link_disponivel ? "Presente" : "Ausente"}</span></div>
+    <button id="btn-graph-test" class="btn btn-secondary" style="margin-top:10px;width:100%;">Testar conexao Graph</button>
+    <div id="graph-test-result" class="muted" style="margin-top:8px;"></div>
   `;
+  const btn = document.getElementById("btn-graph-test");
+  if (btn) btn.addEventListener("click", testarGraph);
+}
+
+async function testarGraph() {
+  const out = document.getElementById("graph-test-result");
+  out.textContent = "Testando...";
+  try {
+    const r = await api("/api/graph/test", { method: "POST" });
+    out.textContent = r.mensagem;
+    out.style.color = r.ok ? "var(--ok)" : "var(--danger)";
+  } catch (e) {
+    out.textContent = e.message;
+    out.style.color = "var(--danger)";
+  }
 }
 
 function renderPendencias(lista) {

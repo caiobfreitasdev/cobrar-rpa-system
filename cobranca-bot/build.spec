@@ -24,7 +24,8 @@ hiddenimports = (
 
 # numpy/pandas carregam C-extensions e dados que precisam ser coletados
 # integralmente (senao o exe quebra com "numpy._core._exceptions").
-for pkg in ("numpy", "pandas"):
+# certifi traz o CA bundle necessario para o HTTPS do requests (Graph API).
+for pkg in ("numpy", "pandas", "certifi"):
     d, b, h = collect_all(pkg)
     datas += d
     binaries += b

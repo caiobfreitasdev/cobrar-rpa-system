@@ -1,11 +1,9 @@
-"""Render do template HTML, envio SMTP e log em 'envios'."""
+"""Render do template HTML, envio via Microsoft Graph e log em 'envios'."""
 import re
-import smtplib
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
 
 from app.core.config import settings, resource_path
 from app.core.db import db_session
+from app.services import graph_client
 from app.services.titulos import buscar_por_ids
 from app.rules import pendencias
 
@@ -66,25 +64,6 @@ def render_email(titulo: dict) -> str:
     return html
 
 
-def _enviar_smtp(destinatario: str, assunto: str, corpo_html: str) -> None:
-    msg = MIMEMultipart("alternative")
-    msg["Subject"] = assunto
-    msg["From"] = settings.SMTP_FROM
-    msg["To"] = destinatario
-    msg.attach(MIMEText(corpo_html, "html", "utf-8"))
-
-    with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=30) as server:
-        server.ehlo()
-        try:
-            server.starttls()
-            server.ehlo()
-        except smtplib.SMTPException:
-            pass  # servidor pode nao suportar STARTTLS
-        if settings.SMTP_USER:
-            server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
-        server.sendmail(settings.SMTP_FROM, [destinatario], msg.as_string())
-
-
 def _log_envio(titulo_id: int, status: str, erro: str = None) -> None:
     with db_session() as conn:
         conn.execute(
@@ -101,7 +80,7 @@ def enviar_lote(titulo_ids: list[int]) -> dict:
     falhas = []
     pendentes = []  # sem e-mail ou bloqueados por regra
 
-    smtp_ok = settings.smtp_configured()
+    graph_ok = settings.graph_configured()
 
     for t in titulos:
         # Gancho das regras pendentes (flags desligadas nesta fase).
@@ -115,15 +94,15 @@ def enviar_lote(titulo_ids: list[int]) -> dict:
             pendentes.append({"id": t["id"], "cliente": t["cliente"], "motivo": "sem e-mail"})
             continue
 
-        if not smtp_ok:
-            falhas.append({"id": t["id"], "cliente": t["cliente"], "erro": "SMTP nao configurado"})
-            _log_envio(t["id"], "erro", "SMTP nao configurado")
+        if not graph_ok:
+            falhas.append({"id": t["id"], "cliente": t["cliente"], "erro": "Graph nao configurado"})
+            _log_envio(t["id"], "erro", "Graph nao configurado")
             continue
 
         try:
             corpo = render_email(t)
             assunto = f"Cobranca - Titulo {t.get('titulo')}"
-            _enviar_smtp(email, assunto, corpo)
+            graph_client.enviar_email(email, assunto, corpo)
             _log_envio(t["id"], "enviado")
             enviados.append({"id": t["id"], "cliente": t["cliente"], "email": email})
         except Exception as exc:  # noqa: BLE001

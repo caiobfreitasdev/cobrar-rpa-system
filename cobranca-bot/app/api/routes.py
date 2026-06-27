@@ -4,7 +4,7 @@ from pydantic import BaseModel
 
 from app.core.config import settings
 from app.rules import pendencias
-from app.services import excel_sync, email_sender, titulos as titulos_svc
+from app.services import excel_sync, email_sender, graph_client, titulos as titulos_svc
 
 router = APIRouter(prefix="/api")
 
@@ -30,9 +30,16 @@ def get_resumo():
     return {
         "geral": titulos_svc.resumo_geral(),
         "ultima_carga": _ultima_carga,
-        "smtp_configurado": settings.smtp_configured(),
+        "graph_configurado": settings.graph_configured(),
+        "graph_sender": settings.GRAPH_SENDER,
         "excel_path": settings.EXCEL_PATH,
     }
+
+
+@router.post("/graph/test")
+def post_graph_test():
+    """Valida as credenciais do Graph obtendo um token (nao envia e-mail)."""
+    return graph_client.testar_conexao()
 
 
 @router.get("/pendencias")

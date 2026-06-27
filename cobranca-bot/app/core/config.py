@@ -36,18 +36,23 @@ load_dotenv(BASE_DIR / ".env")
 class Settings:
     EXCEL_PATH: str = os.getenv("EXCEL_PATH", "")
 
-    SMTP_HOST: str = os.getenv("SMTP_HOST", "")
-    SMTP_PORT: int = int(os.getenv("SMTP_PORT", "587"))
-    SMTP_USER: str = os.getenv("SMTP_USER", "")
-    SMTP_PASSWORD: str = os.getenv("SMTP_PASSWORD", "")
-    SMTP_FROM: str = os.getenv("SMTP_FROM", "")
+    # Microsoft Graph API (envio de e-mail via client credentials)
+    GRAPH_CLIENT_ID: str = os.getenv("ID_CLIENT_ID", "")
+    GRAPH_CLIENT_SECRET: str = os.getenv("ID_CLIENT_SECRET", "")
+    GRAPH_TENANT: str = os.getenv("ID_CLIENT_TENANT", "")
+    GRAPH_SENDER: str = os.getenv("GRAPH_SENDER", "")
 
     # Caminhos internos
     DATA_DIR: Path = BASE_DIR / "data"
     DB_PATH: Path = DATA_DIR / "cobranca.db"
 
-    def smtp_configured(self) -> bool:
-        return bool(self.SMTP_HOST and self.SMTP_FROM)
+    def graph_configured(self) -> bool:
+        return all([
+            self.GRAPH_CLIENT_ID,
+            self.GRAPH_CLIENT_SECRET,
+            self.GRAPH_TENANT,
+            self.GRAPH_SENDER,
+        ])
 
 
 settings = Settings()
