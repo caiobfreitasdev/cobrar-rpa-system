@@ -57,3 +57,54 @@ class Settings:
 
 settings = Settings()
 settings.DATA_DIR.mkdir(parents=True, exist_ok=True)
+
+
+# ---------------------------------------------------------------------------
+# Caminho da planilha selecionado pelo usuario (persistido entre execucoes).
+# Tem prioridade sobre o EXCEL_PATH do .env. Permite escolher o arquivo pela
+# janela do app (file picker), sem editar o .env.
+# ---------------------------------------------------------------------------
+import json
+
+CONFIG_FILE = settings.DATA_DIR / "app_config.json"
+
+
+def _read_config() -> dict:
+    if CONFIG_FILE.exists():
+        try:
+            return json.loads(CONFIG_FILE.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            return {}
+    return {}
+
+
+def get_excel_path() -> str:
+    """Caminho efetivo da planilha: escolha do usuario > .env."""
+    escolhido = _read_config().get("excel_path")
+    if escolhido and Path(escolhido).exists():
+        return escolhido
+    return settings.EXCEL_PATH
+
+
+def set_excel_path(caminho: str) -> None:
+    cfg = _read_config()
+    cfg["excel_path"] = caminho
+    CONFIG_FILE.write_text(json.dumps(cfg, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def get_regua() -> dict:
+    """Config da regua automatica: {ativa: bool, dias: [int]}."""
+    cfg = _read_config()
+    return {
+        "ativa": bool(cfg.get("regua_ativa", False)),
+        "dias": cfg.get("regua_dias", [7, 15, 30]),
+    }
+
+
+def set_regua(ativa: bool, dias: list) -> None:
+    cfg = _read_config()
+    cfg["regua_ativa"] = bool(ativa)
+    # normaliza: inteiros unicos, ordenados, positivos
+    dias_norm = sorted({int(d) for d in dias if int(d) > 0})
+    cfg["regua_dias"] = dias_norm
+    CONFIG_FILE.write_text(json.dumps(cfg, ensure_ascii=False, indent=2), encoding="utf-8")

@@ -5,7 +5,7 @@ from typing import Any, Optional
 
 import pandas as pd
 
-from app.core.config import settings
+from app.core.config import get_excel_path
 from app.core.db import db_session
 
 SHEET_NAME = "BASE"
@@ -111,9 +111,10 @@ def _row_to_record(row: pd.Series, has_email: bool, has_link: bool) -> dict:
 
 
 def load_dataframe() -> pd.DataFrame:
-    if not settings.EXCEL_PATH:
-        raise ValueError("EXCEL_PATH nao configurado no .env")
-    df = pd.read_excel(settings.EXCEL_PATH, sheet_name=SHEET_NAME, engine="openpyxl")
+    caminho = get_excel_path()
+    if not caminho:
+        raise ValueError("Nenhuma planilha selecionada. Use 'Selecionar planilha'.")
+    df = pd.read_excel(caminho, sheet_name=SHEET_NAME, engine="openpyxl")
     return df
 
 

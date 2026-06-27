@@ -35,12 +35,26 @@ CREATE TABLE IF NOT EXISTS envios (
     data_envio TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     status_envio TEXT,
     canal TEXT DEFAULT 'email',
+    origem TEXT DEFAULT 'manual',   -- manual | lote | agendado | regua
+    regra_dias INTEGER,             -- regra da regua que disparou (se houver)
     erro TEXT,
+    FOREIGN KEY (titulo_id) REFERENCES titulos (id)
+);
+
+CREATE TABLE IF NOT EXISTS agendamentos (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    titulo_id INTEGER NOT NULL,
+    data_agendada TIMESTAMP NOT NULL,
+    status TEXT DEFAULT 'pendente',  -- pendente | executado | cancelado | erro
+    erro TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    executado_em TIMESTAMP,
     FOREIGN KEY (titulo_id) REFERENCES titulos (id)
 );
 
 CREATE INDEX IF NOT EXISTS idx_titulos_ativo ON titulos (ativo);
 CREATE INDEX IF NOT EXISTS idx_envios_titulo ON envios (titulo_id);
+CREATE INDEX IF NOT EXISTS idx_agend_status ON agendamentos (status);
 """
 
 
@@ -64,6 +78,16 @@ def db_session():
         conn.close()
 
 
+def _migrar(conn) -> None:
+    """Adiciona colunas novas em bancos criados em versoes anteriores."""
+    cols = {r["name"] for r in conn.execute("PRAGMA table_info(envios)")}
+    if "origem" not in cols:
+        conn.execute("ALTER TABLE envios ADD COLUMN origem TEXT DEFAULT 'manual'")
+    if "regra_dias" not in cols:
+        conn.execute("ALTER TABLE envios ADD COLUMN regra_dias INTEGER")
+
+
 def init_db() -> None:
     with db_session() as conn:
         conn.executescript(SCHEMA)
+        _migrar(conn)

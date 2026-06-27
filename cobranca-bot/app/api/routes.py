@@ -1,10 +1,18 @@
 """Endpoints FastAPI."""
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import Response
 from pydantic import BaseModel
 
-from app.core.config import settings
+from app.core.config import settings, get_excel_path, get_regua, set_regua
 from app.rules import pendencias
-from app.services import excel_sync, email_sender, graph_client, titulos as titulos_svc
+from app.services import (
+    agendamentos as agend_svc,
+    excel_sync,
+    email_sender,
+    graph_client,
+    relatorios,
+    titulos as titulos_svc,
+)
 
 router = APIRouter(prefix="/api")
 
@@ -14,6 +22,17 @@ _ultima_carga: dict = {}
 
 class LoteRequest(BaseModel):
     titulo_ids: list[int]
+    origem: str = "manual"
+
+
+class AgendarRequest(BaseModel):
+    titulo_ids: list[int]
+    data_agendada: str
+
+
+class ReguaRequest(BaseModel):
+    ativa: bool
+    dias: list[int]
 
 
 @router.get("/titulos")
@@ -32,7 +51,7 @@ def get_resumo():
         "ultima_carga": _ultima_carga,
         "graph_configurado": settings.graph_configured(),
         "graph_sender": settings.GRAPH_SENDER,
-        "excel_path": settings.EXCEL_PATH,
+        "excel_path": get_excel_path(),
     }
 
 
@@ -73,4 +92,64 @@ def post_preview(req: LoteRequest):
 def post_enviar(req: LoteRequest):
     if not req.titulo_ids:
         raise HTTPException(400, "Nenhum titulo selecionado")
-    return email_sender.enviar_lote(req.titulo_ids)
+    origem = "lote" if len(req.titulo_ids) > 1 else "manual"
+    return email_sender.enviar_lote(req.titulo_ids, origem=origem)
+
+
+# ---------------------------------------------------------------------------
+# Relatorio de cobrancas
+# ---------------------------------------------------------------------------
+@router.get("/relatorio")
+def get_relatorio(status: str | None = None):
+    return {
+        "resumo": relatorios.resumo_envios(),
+        "envios": relatorios.listar_envios(status=status),
+    }
+
+
+@router.get("/relatorio/export")
+def get_relatorio_export(status: str | None = None):
+    conteudo = relatorios.exportar_csv(status=status)
+    return Response(
+        content=conteudo.encode("utf-8"),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=relatorio_cobrancas.csv"},
+    )
+
+
+# ---------------------------------------------------------------------------
+# Agendamento
+# ---------------------------------------------------------------------------
+@router.get("/agendamentos")
+def get_agendamentos(status: str | None = None):
+    return agend_svc.listar_agendamentos(status=status)
+
+
+@router.post("/agendamentos")
+def post_agendamentos(req: AgendarRequest):
+    if not req.titulo_ids:
+        raise HTTPException(400, "Nenhum titulo selecionado")
+    try:
+        return agend_svc.criar_agendamentos(req.titulo_ids, req.data_agendada)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc))
+
+
+@router.post("/agendamentos/{agendamento_id}/cancelar")
+def post_cancelar_agendamento(agendamento_id: int):
+    agend_svc.cancelar(agendamento_id)
+    return {"ok": True}
+
+
+# ---------------------------------------------------------------------------
+# Regua automatica
+# ---------------------------------------------------------------------------
+@router.get("/regua")
+def get_regua_cfg():
+    return get_regua()
+
+
+@router.post("/regua")
+def post_regua_cfg(req: ReguaRequest):
+    set_regua(req.ativa, req.dias)
+    return get_regua()

@@ -64,17 +64,22 @@ def render_email(titulo: dict) -> str:
     return html
 
 
-def _log_envio(titulo_id: int, status: str, erro: str = None) -> None:
+def _log_envio(titulo_id: int, status: str, erro: str = None,
+               origem: str = "manual", regra_dias: int = None) -> None:
     with db_session() as conn:
         conn.execute(
-            """INSERT INTO envios (titulo_id, status_envio, canal, erro)
-               VALUES (?, ?, 'email', ?)""",
-            (titulo_id, status, erro),
+            """INSERT INTO envios (titulo_id, status_envio, canal, origem, regra_dias, erro)
+               VALUES (?, ?, 'email', ?, ?, ?)""",
+            (titulo_id, status, origem, regra_dias, erro),
         )
 
 
-def enviar_lote(titulo_ids: list[int]) -> dict:
-    """Envia um e-mail por titulo selecionado. Valida e-mail antes de enviar."""
+def enviar_lote(titulo_ids: list[int], origem: str = "manual",
+                regra_dias: int = None) -> dict:
+    """Envia um e-mail por titulo selecionado. Valida e-mail antes de enviar.
+
+    origem: manual | lote | agendado | regua (registrado no log de envios).
+    """
     titulos = buscar_por_ids(titulo_ids)
     enviados = []
     falhas = []
@@ -96,17 +101,17 @@ def enviar_lote(titulo_ids: list[int]) -> dict:
 
         if not graph_ok:
             falhas.append({"id": t["id"], "cliente": t["cliente"], "erro": "Graph nao configurado"})
-            _log_envio(t["id"], "erro", "Graph nao configurado")
+            _log_envio(t["id"], "erro", "Graph nao configurado", origem, regra_dias)
             continue
 
         try:
             corpo = render_email(t)
             assunto = f"Cobranca - Titulo {t.get('titulo')}"
             graph_client.enviar_email(email, assunto, corpo)
-            _log_envio(t["id"], "enviado")
+            _log_envio(t["id"], "enviado", None, origem, regra_dias)
             enviados.append({"id": t["id"], "cliente": t["cliente"], "email": email})
         except Exception as exc:  # noqa: BLE001
-            _log_envio(t["id"], "erro", str(exc))
+            _log_envio(t["id"], "erro", str(exc), origem, regra_dias)
             falhas.append({"id": t["id"], "cliente": t["cliente"], "erro": str(exc)})
 
     return {

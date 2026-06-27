@@ -51,12 +51,12 @@ def pendencias_producao() -> list[dict]:
             ),
         },
         {
-            "chave": "REGUA_AUTOMATICA",
-            "ativa": REGUA_AUTOMATICA,
-            "titulo": "Regua de cobranca automatica",
+            "chave": "TRAVA_LINK",
+            "ativa": False,
+            "titulo": "Conferir secret do Azure (expira)",
             "descricao": (
-                "Envio automatico por dias de atraso. Hoje o envio e sempre "
-                "manual com confirmacao de lote."
+                "O client secret do Graph tem validade. Anote a data de expiracao "
+                "e renove no Azure antes de vencer para nao parar os envios."
             ),
         },
         {

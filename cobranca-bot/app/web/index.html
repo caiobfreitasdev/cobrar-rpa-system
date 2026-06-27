@@ -10,52 +10,151 @@
   <header class="topbar">
     <div class="topbar-title">
       <h1>Bot de Cobranca</h1>
-      <span class="subtitle">Contas a receber &middot; envio manual com confirmacao</span>
+      <span class="subtitle">Contas a receber &middot; envio com confirmacao</span>
     </div>
     <div class="topbar-actions">
+      <button id="btn-select" class="btn btn-secondary">Selecionar planilha</button>
       <button id="btn-reload" class="btn btn-secondary">Recarregar planilha</button>
-      <button id="btn-lote" class="btn btn-primary" disabled>Enviar lote (<span id="sel-count">0</span>)</button>
     </div>
   </header>
 
+  <nav class="tabs">
+    <button class="tab active" data-tab="cobrancas">Cobrancas</button>
+    <button class="tab" data-tab="relatorio">Relatorio</button>
+    <button class="tab" data-tab="agendamento">Agendamento</button>
+  </nav>
+
   <div class="layout">
     <main class="content">
-      <section class="cards" id="cards"></section>
+      <!-- ABA COBRANCAS -->
+      <section class="tab-panel active" id="tab-cobrancas">
+        <div id="planilha-bar" class="planilha-bar"></div>
+        <section class="cards" id="cards"></section>
 
-      <section class="toolbar">
-        <div class="filters">
-          <label>Status de envio:
-            <select id="filter-status">
-              <option value="">Todos</option>
-              <option value="nao_cobrado">Nao cobrado</option>
-              <option value="cobrado">Cobrado</option>
-            </select>
-          </label>
-          <label class="check-inline">
-            <input type="checkbox" id="filter-ordenar" checked> Ordenar por dias de atraso
-          </label>
-        </div>
-        <div class="sel-info" id="sel-info"></div>
+        <section class="toolbar">
+          <div class="filters">
+            <label>Status de envio:
+              <select id="filter-status">
+                <option value="">Todos</option>
+                <option value="nao_cobrado">Nao cobrado</option>
+                <option value="cobrado">Cobrado</option>
+              </select>
+            </label>
+            <label class="check-inline">
+              <input type="checkbox" id="filter-ordenar" checked> Ordenar por dias de atraso
+            </label>
+          </div>
+          <div class="toolbar-actions">
+            <span class="sel-info" id="sel-info"></span>
+            <button id="btn-agendar" class="btn btn-secondary" disabled>Agendar selecionados</button>
+            <button id="btn-lote" class="btn btn-primary" disabled>Enviar lote (<span id="sel-count">0</span>)</button>
+          </div>
+        </section>
+
+        <section class="table-wrap">
+          <table class="grid">
+            <thead>
+              <tr>
+                <th class="col-check"><input type="checkbox" id="check-all"></th>
+                <th>Cliente</th>
+                <th>Titulo</th>
+                <th class="num">Total Atualizado</th>
+                <th>Vencimento</th>
+                <th class="num">Dias Atraso</th>
+                <th>E-mail</th>
+                <th>Status</th>
+                <th class="col-acao">Acao</th>
+              </tr>
+            </thead>
+            <tbody id="tbody">
+              <tr><td colspan="9" class="empty">Carregando...</td></tr>
+            </tbody>
+          </table>
+        </section>
       </section>
 
-      <section class="table-wrap">
-        <table class="grid">
-          <thead>
-            <tr>
-              <th class="col-check"><input type="checkbox" id="check-all"></th>
-              <th>Cliente</th>
-              <th>Titulo</th>
-              <th class="num">Total Atualizado</th>
-              <th>Vencimento</th>
-              <th class="num">Dias Atraso</th>
-              <th>E-mail</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody id="tbody">
-            <tr><td colspan="8" class="empty">Carregando...</td></tr>
-          </tbody>
-        </table>
+      <!-- ABA RELATORIO -->
+      <section class="tab-panel" id="tab-relatorio">
+        <section class="cards" id="rel-cards"></section>
+        <section class="toolbar">
+          <div class="filters">
+            <label>Status:
+              <select id="rel-filter-status">
+                <option value="">Todos</option>
+                <option value="enviado">Enviados</option>
+                <option value="erro">Erros</option>
+              </select>
+            </label>
+          </div>
+          <div class="toolbar-actions">
+            <button id="btn-export" class="btn btn-primary">Exportar CSV (Excel)</button>
+          </div>
+        </section>
+        <section class="table-wrap">
+          <table class="grid">
+            <thead>
+              <tr>
+                <th>Data do Envio</th>
+                <th>Status</th>
+                <th>Origem</th>
+                <th>Cliente</th>
+                <th>Titulo</th>
+                <th class="num">Valor</th>
+                <th>E-mail</th>
+                <th>Erro</th>
+              </tr>
+            </thead>
+            <tbody id="rel-tbody">
+              <tr><td colspan="8" class="empty">Sem envios registrados.</td></tr>
+            </tbody>
+          </table>
+        </section>
+      </section>
+
+      <!-- ABA AGENDAMENTO -->
+      <section class="tab-panel" id="tab-agendamento">
+        <div class="panel panel-block">
+          <h2>Regua automatica</h2>
+          <p class="muted">
+            Quando ativada, o sistema envia a cobranca automaticamente ao atingir os
+            marcos de dias de atraso abaixo (um envio por marco). O app precisa estar aberto.
+          </p>
+          <label class="switch-row">
+            <input type="checkbox" id="regua-ativa">
+            <span>Ativar regua automatica</span>
+          </label>
+          <div class="regua-dias">
+            <label>Dias de atraso (separados por virgula):</label>
+            <input type="text" id="regua-dias-input" placeholder="7, 15, 30">
+          </div>
+          <button id="btn-salvar-regua" class="btn btn-primary">Salvar regua</button>
+          <span id="regua-status" class="muted"></span>
+        </div>
+
+        <div class="panel panel-block">
+          <h2>Agendamentos manuais</h2>
+          <p class="muted">
+            Para agendar, va em <strong>Cobrancas</strong>, selecione os titulos e clique
+            em <strong>Agendar selecionados</strong>.
+          </p>
+          <div class="table-wrap">
+            <table class="grid">
+              <thead>
+                <tr>
+                  <th>Data Agendada</th>
+                  <th>Cliente</th>
+                  <th>Titulo</th>
+                  <th class="num">Valor</th>
+                  <th>Status</th>
+                  <th class="col-acao">Acao</th>
+                </tr>
+              </thead>
+              <tbody id="agend-tbody">
+                <tr><td colspan="6" class="empty">Nenhum agendamento.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
       </section>
     </main>
 
@@ -79,23 +178,15 @@
     </aside>
   </div>
 
-  <!-- Modal de confirmacao de lote -->
-  <div class="modal-overlay" id="modal" hidden>
-    <div class="modal">
-      <h2>Confirmar envio de lote</h2>
-      <div id="modal-summary" class="modal-summary"></div>
-      <div class="modal-list-wrap">
-        <table class="grid grid-compact">
-          <thead>
-            <tr><th>Cliente</th><th>Titulo</th><th>E-mail</th></tr>
-          </thead>
-          <tbody id="modal-tbody"></tbody>
-        </table>
-      </div>
-      <p class="modal-warn" id="modal-warn"></p>
+  <!-- Confirmacao simples (generica) -->
+  <div class="modal-overlay" id="confirm-modal" hidden>
+    <div class="modal modal-sm">
+      <h2 id="confirm-title">Confirmar</h2>
+      <p id="confirm-msg" class="confirm-msg"></p>
+      <div id="confirm-extra"></div>
       <div class="modal-actions">
-        <button class="btn btn-secondary" id="modal-cancel">Cancelar</button>
-        <button class="btn btn-primary" id="modal-confirm">Confirmar e enviar</button>
+        <button class="btn btn-secondary" id="confirm-cancel">Cancelar</button>
+        <button class="btn btn-primary" id="confirm-ok">Confirmar</button>
       </div>
     </div>
   </div>
