@@ -240,6 +240,8 @@ body {
   display: flex; align-items: center; justify-content: center;
   z-index: 50;
 }
+/* o atributo hidden deve vencer o display:flex acima */
+.modal-overlay[hidden] { display: none; }
 .modal {
   background: var(--surface);
   border-radius: 12px;
