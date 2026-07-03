@@ -36,3 +36,6 @@ build/
 Thumbs.db
 .DS_Store
 desktop.ini
+
+# Config de runtime (caminho da planilha, regua)
+**/data/app_config.json
