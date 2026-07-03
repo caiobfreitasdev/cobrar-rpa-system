@@ -3,10 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Cobranca</title>
+  <title>Notificacao de Debito</title>
 </head>
-<body style="margin:0; padding:0; background-color:#f1f4f8; font-family:Arial, Helvetica, sans-serif; color:#1f2937;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f1f4f8; padding:24px 0;">
+<body style="margin:0; padding:0; background-color:#f2f5f9; font-family:Arial, Helvetica, sans-serif; color:#1f2937;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f2f5f9; padding:24px 0;">
     <tr>
       <td align="center">
         <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:600px; max-width:600px; background-color:#ffffff; border-radius:8px; overflow:hidden; border:1px solid #e2e8f0;">
@@ -15,7 +15,7 @@
           <tr>
             <td style="background-color:#1e3a6e; padding:24px 32px;">
               <p style="margin:0; color:#ffffff; font-size:18px; font-weight:bold; letter-spacing:0.3px;">
-                Aviso de Cobranca
+                Notifica&ccedil;&atilde;o de D&eacute;bito
               </p>
             </td>
           </tr>
@@ -24,17 +24,17 @@
           <tr>
             <td style="padding:32px;">
               <p style="margin:0 0 16px 0; font-size:15px; line-height:1.6;">
-                Prezado(a) <strong>{{cliente}}</strong>,
+                Prezado cliente,
               </p>
-              <p style="margin:0 0 20px 0; font-size:15px; line-height:1.6;">
-                Identificamos a pendencia financeira abaixo em nossos registros.
-                Solicitamos a regularizacao do titulo no menor prazo possivel.
+              <p style="margin:0 0 16px 0; font-size:15px; line-height:1.6;">
+                Informamos que, at&eacute; a presente data, n&atilde;o identificamos o recebimento do
+                t&iacute;tulo n&ordm; <strong>{{titulo}}</strong>, vencido h&aacute; <strong>{{dias_atraso}} dias</strong>.
               </p>
 
-              <!-- Detalhes do titulo -->
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse; margin:0 0 24px 0;">
+              <!-- Dados do titulo -->
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse; margin:0 0 20px 0;">
                 <tr>
-                  <td style="padding:10px 14px; background-color:#f8fafc; border:1px solid #e2e8f0; font-size:13px; color:#64748b; width:45%;">Titulo</td>
+                  <td style="padding:10px 14px; background-color:#f8fafc; border:1px solid #e2e8f0; font-size:13px; color:#64748b; width:45%;">T&iacute;tulo</td>
                   <td style="padding:10px 14px; border:1px solid #e2e8f0; font-size:14px; font-weight:bold;">{{titulo}}</td>
                 </tr>
                 <tr>
@@ -46,40 +46,49 @@
                   <td style="padding:10px 14px; border:1px solid #e2e8f0; font-size:14px;">{{vencimento}}</td>
                 </tr>
                 <tr>
-                  <td style="padding:10px 14px; background-color:#f8fafc; border:1px solid #e2e8f0; font-size:13px; color:#64748b;">Dias em Atraso</td>
-                  <td style="padding:10px 14px; border:1px solid #e2e8f0; font-size:14px;">{{dias_atraso}}</td>
-                </tr>
-                <tr>
-                  <td style="padding:10px 14px; background-color:#fef2f2; border:1px solid #e2e8f0; font-size:13px; color:#991b1b;">Total Atualizado</td>
+                  <td style="padding:10px 14px; background-color:#fef2f2; border:1px solid #e2e8f0; font-size:13px; color:#991b1b;">Valor Total Atualizado</td>
                   <td style="padding:10px 14px; border:1px solid #e2e8f0; font-size:16px; font-weight:bold; color:#991b1b;">{{total_atualizado}}</td>
                 </tr>
               </table>
 
+              <p style="margin:0 0 16px 0; font-size:15px; line-height:1.6;">
+                Ressaltamos que a aus&ecirc;ncia de retorno e a manuten&ccedil;&atilde;o da inadimpl&ecirc;ncia
+                poder&atilde;o resultar na ado&ccedil;&atilde;o das medidas cab&iacute;veis para recupera&ccedil;&atilde;o
+                do cr&eacute;dito, incluindo o encaminhamento do d&eacute;bito para protesto.
+              </p>
+
               {% if link_cobranca %}
-              <!-- Bloco condicional: link de pagamento -->
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 24px 0;">
+              <p style="margin:0 0 16px 0; font-size:15px; line-height:1.6;">
+                Como alternativa para regulariza&ccedil;&atilde;o da pend&ecirc;ncia, informamos que, a partir
+                de junho de 2026, passamos a disponibilizar a op&ccedil;&atilde;o de pagamento via
+                <strong>cart&atilde;o de cr&eacute;dito</strong>, com possibilidade de parcelamento.
+              </p>
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 20px 0;">
                 <tr>
                   <td align="center" style="padding:8px 0;">
                     <a href="{{link_cobranca}}" target="_blank"
                        style="display:inline-block; background-color:#1e3a6e; color:#ffffff; text-decoration:none; padding:14px 32px; border-radius:6px; font-size:15px; font-weight:bold;">
-                      Pagar Agora
+                      Pagar com Cart&atilde;o
                     </a>
                   </td>
                 </tr>
                 <tr>
                   <td align="center" style="font-size:12px; color:#94a3b8; padding-top:8px;">
-                    Pagamento via cartao por meio do link seguro acima.
+                    Pagamento parcelado via cart&atilde;o de cr&eacute;dito pelo link seguro acima.
                   </td>
                 </tr>
               </table>
               {% endif %}
 
-              <p style="margin:0 0 8px 0; font-size:14px; line-height:1.6;">
-                Caso o pagamento ja tenha sido efetuado, por favor desconsidere este aviso
-                e encaminhe o comprovante para baixa em nosso sistema.
+              <p style="margin:0 0 16px 0; font-size:15px; line-height:1.6;">
+                Permanecemos &agrave; disposi&ccedil;&atilde;o para esclarecimentos e aguardamos seu retorno
+                com a maior brevidade poss&iacute;vel.
               </p>
-              <p style="margin:0; font-size:14px; line-height:1.6;">
-                Permanecemos a disposicao para esclarecimentos.
+
+              <p style="margin:0; font-size:15px; line-height:1.6;">
+                Atenciosamente,<br>
+                <strong>Sinergas</strong><br>
+                <span style="font-size:13px; color:#64748b;">Cobran&ccedil;a administrada por IDS Contadores</span>
               </p>
             </td>
           </tr>
@@ -88,8 +97,9 @@
           <tr>
             <td style="background-color:#f8fafc; padding:20px 32px; border-top:1px solid #e2e8f0;">
               <p style="margin:0; font-size:12px; color:#94a3b8; line-height:1.5;">
-                Esta e uma mensagem automatica do setor de cobranca.
-                Em caso de duvidas, responda este e-mail.
+                Caso o pagamento j&aacute; tenha sido efetuado, por favor desconsidere este aviso
+                e encaminhe o comprovante para baixa em nosso sistema. Em caso de d&uacute;vidas,
+                responda este e-mail.
               </p>
             </td>
           </tr>

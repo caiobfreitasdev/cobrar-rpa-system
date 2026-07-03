@@ -106,7 +106,7 @@ def enviar_lote(titulo_ids: list[int], origem: str = "manual",
 
         try:
             corpo = render_email(t)
-            assunto = f"Cobranca - Titulo {t.get('titulo')}"
+            assunto = f"Notificação de Débito – Título {t.get('titulo')}"
             graph_client.enviar_email(email, assunto, corpo)
             _log_envio(t["id"], "enviado", None, origem, regra_dias)
             enviados.append({"id": t["id"], "cliente": t["cliente"], "email": email})
