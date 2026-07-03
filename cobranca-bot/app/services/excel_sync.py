@@ -170,6 +170,8 @@ def load_dataframe() -> pd.DataFrame:
     if not caminho:
         raise ValueError("Nenhuma planilha selecionada. Use 'Selecionar planilha'.")
     df = pd.read_excel(caminho, sheet_name=SHEET_NAME, engine="openpyxl")
+    # Tolera espacos extras nos cabecalhos ("Total  Atualizado", "Juros ").
+    df.columns = [" ".join(str(c).split()) for c in df.columns]
     return df
 
 
