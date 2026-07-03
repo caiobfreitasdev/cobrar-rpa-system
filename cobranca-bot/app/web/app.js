@@ -8,6 +8,9 @@ const state = {
   selecionados: new Set(),
   busca: "",
   pagina: 1,
+  filtroCliente: "",
+  filtroAtraso: "",
+  visao: "titulos", // titulos | clientes (consolidado)
 };
 
 // ---------- Helpers ----------
@@ -174,16 +177,87 @@ function renderPlanilhaBar(resumo) {
   }
 }
 
-// ---------- Tabela de cobrancas (busca + paginacao) ----------
+// ---------- Tabela de cobrancas (filtros + paginacao + visoes) ----------
+function _faixaAtrasoOk(dias) {
+  const d = dias ?? 0;
+  switch (state.filtroAtraso) {
+    case "0-15": return d < 15;
+    case "15-30": return d >= 15 && d < 30;
+    case "30-60": return d >= 30 && d < 60;
+    case "60+": return d >= 60;
+    default: return true;
+  }
+}
+
 function titulosFiltrados() {
-  if (!state.busca) return state.titulos;
-  const q = normalizar(state.busca);
-  return state.titulos.filter((t) =>
-    normalizar(t.cliente).includes(q) ||
-    normalizar(t.cd_cliente).includes(q) ||
-    normalizar(t.titulo).includes(q) ||
-    normalizar(t.email).includes(q)
-  );
+  let lista = state.titulos;
+  if (state.filtroCliente) {
+    lista = lista.filter((t) => t.cliente === state.filtroCliente);
+  }
+  if (state.filtroAtraso) {
+    lista = lista.filter((t) => _faixaAtrasoOk(t.dias_atraso));
+  }
+  if (state.busca) {
+    const q = normalizar(state.busca);
+    lista = lista.filter((t) =>
+      normalizar(t.cliente).includes(q) ||
+      normalizar(t.cd_cliente).includes(q) ||
+      normalizar(t.titulo).includes(q) ||
+      normalizar(t.email).includes(q)
+    );
+  }
+  return lista;
+}
+
+function filtrosAtivos() {
+  return !!(state.busca || state.filtroCliente || state.filtroAtraso ||
+            document.getElementById("filter-status").value);
+}
+
+// Barra de consolidacao do conjunto filtrado
+function renderResumoFiltro(filtrados) {
+  const bar = document.getElementById("resumo-filtro");
+  if (!filtrosAtivos() || filtrados.length === 0) {
+    bar.hidden = true;
+    return;
+  }
+  const clientes = new Set(filtrados.map((t) => t.cliente)).size;
+  const total = filtrados.reduce((s, t) => s + (t.total_atualizado || 0), 0);
+  const cobrados = filtrados.filter((t) => t.cobrado).length;
+  const maiorAtraso = Math.max(...filtrados.map((t) => t.dias_atraso ?? 0));
+  bar.hidden = false;
+  bar.innerHTML = `
+    <span><strong>${filtrados.length}</strong> titulo(s)</span>
+    <span><strong>${clientes}</strong> cliente(s)</span>
+    <span>Total: <strong>${fmtMoeda(total)}</strong></span>
+    <span>Cobrados: <strong>${cobrados}</strong> &middot; Nao cobrados: <strong>${filtrados.length - cobrados}</strong></span>
+    <span>Maior atraso: <strong>${maiorAtraso}d</strong></span>
+  `;
+}
+
+// Agrupamento por cliente (visao consolidada)
+function consolidarPorCliente(filtrados) {
+  const mapa = new Map();
+  for (const t of filtrados) {
+    const chave = t.cliente || "-";
+    if (!mapa.has(chave)) {
+      mapa.set(chave, {
+        cliente: chave, cd_cliente: t.cd_cliente, email: t.email,
+        status_cliente: t.status_cliente, titulos: [],
+      });
+    }
+    mapa.get(chave).titulos.push(t);
+  }
+  const grupos = [...mapa.values()];
+  for (const g of grupos) {
+    g.qtd = g.titulos.length;
+    g.total = g.titulos.reduce((s, t) => s + (t.total_atualizado || 0), 0);
+    g.maiorAtraso = Math.max(...g.titulos.map((t) => t.dias_atraso ?? 0));
+    g.cobrados = g.titulos.filter((t) => t.cobrado).length;
+    g.ids = g.titulos.map((t) => t.id);
+  }
+  grupos.sort((a, b) => b.maiorAtraso - a.maiorAtraso);
+  return grupos;
 }
 
 function badgeAtraso(dias) {
@@ -194,17 +268,60 @@ function badgeAtraso(dias) {
   return `<span class="badge-atraso ${cls}">${d}d</span>`;
 }
 
+function _renderThead() {
+  const thead = document.getElementById("thead");
+  if (state.visao === "clientes") {
+    thead.innerHTML = `
+      <tr>
+        <th class="col-check"><input type="checkbox" id="check-all" title="Selecionar todos os resultados do filtro"></th>
+        <th>Cliente</th>
+        <th class="num">Titulos</th>
+        <th class="num">Total Atualizado</th>
+        <th class="num">Maior Atraso</th>
+        <th>Cobranca</th>
+        <th class="col-acao">Acao</th>
+      </tr>`;
+  } else {
+    thead.innerHTML = `
+      <tr>
+        <th class="col-check"><input type="checkbox" id="check-all" title="Selecionar todos os resultados do filtro"></th>
+        <th>Cliente</th>
+        <th>Titulo</th>
+        <th class="num">Total Atualizado</th>
+        <th>Vencimento</th>
+        <th class="num">Atraso</th>
+        <th>Status</th>
+        <th class="col-acao">Acao</th>
+      </tr>`;
+  }
+  document.getElementById("check-all").addEventListener("change", (e) => {
+    const filtrados = titulosFiltrados();
+    if (e.target.checked) filtrados.forEach((t) => state.selecionados.add(t.id));
+    else filtrados.forEach((t) => state.selecionados.delete(t.id));
+    renderTabela();
+  });
+}
+
 function renderTabela() {
+  _renderThead();
   const tbody = document.getElementById("tbody");
   const filtrados = titulosFiltrados();
+  renderResumoFiltro(filtrados);
+  document.getElementById("btn-limpar-filtros").hidden = !filtrosAtivos();
+
+  if (state.visao === "clientes") {
+    renderTabelaClientes(filtrados);
+    return;
+  }
+
   const totalPag = Math.max(1, Math.ceil(filtrados.length / PAGE_SIZE));
   if (state.pagina > totalPag) state.pagina = totalPag;
   const inicio = (state.pagina - 1) * PAGE_SIZE;
   const visiveis = filtrados.slice(inicio, inicio + PAGE_SIZE);
 
   if (filtrados.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="8" class="empty">${state.busca
-      ? "Nenhum titulo encontrado para a busca."
+    tbody.innerHTML = `<tr><td colspan="8" class="empty">${filtrosAtivos()
+      ? "Nenhum titulo encontrado para os filtros."
       : "Nenhum titulo. Selecione/recarregue a planilha."}</td></tr>`;
     renderPaginacao(0, totalPag);
     updateSelUI(filtrados);
@@ -261,15 +378,87 @@ function renderTabela() {
   updateSelUI(filtrados);
 }
 
+// Visao consolidada: uma linha por cliente
+function renderTabelaClientes(filtrados) {
+  const tbody = document.getElementById("tbody");
+  const grupos = consolidarPorCliente(filtrados);
+  const totalPag = Math.max(1, Math.ceil(grupos.length / PAGE_SIZE));
+  if (state.pagina > totalPag) state.pagina = totalPag;
+  const inicio = (state.pagina - 1) * PAGE_SIZE;
+  const visiveis = grupos.slice(inicio, inicio + PAGE_SIZE);
+
+  if (grupos.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="7" class="empty">${filtrosAtivos()
+      ? "Nenhum cliente encontrado para os filtros."
+      : "Nenhum titulo. Selecione/recarregue a planilha."}</td></tr>`;
+    renderPaginacao(0, totalPag);
+    updateSelUI(filtrados);
+    return;
+  }
+
+  tbody.innerHTML = visiveis.map((g) => {
+    const todosSel = g.ids.every((id) => state.selecionados.has(id));
+    const stCli = g.status_cliente
+      ? ` <span class="badge-st ${g.status_cliente === "NEGATIVADO" ? "st-neg" : "st-cob"}">${g.status_cliente}</span>`
+      : "";
+    const cobranca = g.cobrados === g.qtd
+      ? `<span class="badge cobrado">${g.cobrados}/${g.qtd} cobrados</span>`
+      : g.cobrados > 0
+        ? `<span class="badge nao">${g.cobrados}/${g.qtd} cobrados</span>`
+        : `<span class="badge nao">Nao cobrado</span>`;
+    const temEmail = !!g.email;
+    const btn = temEmail
+      ? `<button class="btn btn-mini btn-primary grp-send" data-ids="${g.ids.join(",")}">Enviar ${g.qtd}</button>`
+      : `<button class="btn btn-mini" disabled title="Sem e-mail">Enviar</button>`;
+    return `
+      <tr>
+        <td class="col-check"><input type="checkbox" class="grp-check" data-ids="${g.ids.join(",")}" ${todosSel ? "checked" : ""}></td>
+        <td class="cel-cliente">
+          <div class="cliente-nome">${g.cliente}${stCli}</div>
+          <div class="cliente-sub">${g.cd_cliente ?? ""}${temEmail ? " &middot; " + g.email : ' &middot; <span class="no-email">sem e-mail</span>'}</div>
+        </td>
+        <td class="num">${g.qtd}</td>
+        <td class="num valor-destaque">${fmtMoeda(g.total)}</td>
+        <td class="num">${badgeAtraso(g.maiorAtraso)}</td>
+        <td>${cobranca}</td>
+        <td class="col-acao">${btn}</td>
+      </tr>`;
+  }).join("");
+
+  document.querySelectorAll(".grp-check").forEach((cb) => {
+    cb.addEventListener("change", () => {
+      const ids = cb.dataset.ids.split(",").map(Number);
+      ids.forEach((id) => cb.checked ? state.selecionados.add(id) : state.selecionados.delete(id));
+      updateSelUI(titulosFiltrados());
+    });
+  });
+  document.querySelectorAll(".grp-send").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const ids = btn.dataset.ids.split(",").map(Number);
+      const g = tituloById(ids[0]);
+      const ok = await confirmar({
+        title: "Enviar cobrancas do cliente",
+        msg: `Enviar ${ids.length} cobranca(s) de ${g?.cliente ?? "cliente"}? (um e-mail por titulo)`,
+        okLabel: `Enviar ${ids.length}`,
+      });
+      if (ok) await dispararEnvio(ids);
+    });
+  });
+
+  renderPaginacao(grupos.length, totalPag);
+  updateSelUI(filtrados);
+}
+
 function renderPaginacao(total, totalPag) {
   const el = document.getElementById("paginacao");
+  const rotulo = state.visao === "clientes" ? "cliente(s)" : "titulo(s)";
   if (total <= PAGE_SIZE) {
-    el.innerHTML = total > 0 ? `<span class="pag-info">${total} titulo(s)</span>` : "";
+    el.innerHTML = total > 0 ? `<span class="pag-info">${total} ${rotulo}</span>` : "";
     return;
   }
   const p = state.pagina;
   el.innerHTML = `
-    <span class="pag-info">${total} titulo(s)</span>
+    <span class="pag-info">${total} ${rotulo}</span>
     <div class="pag-controls">
       <button class="btn btn-mini btn-secondary" data-pag="1" ${p === 1 ? "disabled" : ""}>&laquo;</button>
       <button class="btn btn-mini btn-secondary" data-pag="${p - 1}" ${p === 1 ? "disabled" : ""}>&lsaquo;</button>
@@ -555,7 +744,20 @@ async function carregarTitulos() {
   state.titulos = await api(`/api/titulos?${params.toString()}`);
   const visiveis = new Set(state.titulos.map((t) => t.id));
   state.selecionados.forEach((id) => { if (!visiveis.has(id)) state.selecionados.delete(id); });
+  popularFiltroClientes();
   renderTabela();
+}
+
+function popularFiltroClientes() {
+  const sel = document.getElementById("filter-cliente");
+  const atual = state.filtroCliente;
+  const nomes = [...new Set(state.titulos.map((t) => t.cliente).filter(Boolean))]
+    .sort((a, b) => a.localeCompare(b, "pt-BR"));
+  sel.innerHTML = `<option value="">Todos</option>` +
+    nomes.map((n) => `<option value="${n.replace(/"/g, "&quot;")}"${n === atual ? " selected" : ""}>${n}</option>`).join("");
+  if (atual && !nomes.includes(atual)) {
+    state.filtroCliente = "";
+  }
 }
 
 async function carregarResumo() {
@@ -607,6 +809,14 @@ async function selecionarPlanilha() {
   }
 }
 
+function setVisao(v) {
+  state.visao = v;
+  state.pagina = 1;
+  document.getElementById("visao-titulos").classList.toggle("active", v === "titulos");
+  document.getElementById("visao-clientes").classList.toggle("active", v === "clientes");
+  renderTabela();
+}
+
 // ---------- Eventos ----------
 function initEvents() {
   document.getElementById("btn-select").addEventListener("click", selecionarPlanilha);
@@ -620,12 +830,26 @@ function initEvents() {
     state.pagina = 1;
     renderTabela();
   });
-  document.getElementById("check-all").addEventListener("change", (e) => {
-    const filtrados = titulosFiltrados();
-    if (e.target.checked) filtrados.forEach((t) => state.selecionados.add(t.id));
-    else filtrados.forEach((t) => state.selecionados.delete(t.id));
+  document.getElementById("filter-cliente").addEventListener("change", (e) => {
+    state.filtroCliente = e.target.value;
+    state.pagina = 1;
     renderTabela();
   });
+  document.getElementById("filter-atraso").addEventListener("change", (e) => {
+    state.filtroAtraso = e.target.value;
+    state.pagina = 1;
+    renderTabela();
+  });
+  document.getElementById("btn-limpar-filtros").addEventListener("click", () => {
+    state.busca = ""; state.filtroCliente = ""; state.filtroAtraso = ""; state.pagina = 1;
+    document.getElementById("busca").value = "";
+    document.getElementById("filter-cliente").value = "";
+    document.getElementById("filter-atraso").value = "";
+    const st = document.getElementById("filter-status");
+    if (st.value) { st.value = ""; carregarTitulos(); } else { renderTabela(); }
+  });
+  document.getElementById("visao-titulos").addEventListener("click", () => setVisao("titulos"));
+  document.getElementById("visao-clientes").addEventListener("click", () => setVisao("clientes"));
   document.getElementById("rel-filter-status").addEventListener("change", carregarRelatorio);
   document.getElementById("btn-export").addEventListener("click", exportarRelatorio);
   document.getElementById("btn-salvar-regua").addEventListener("click", salvarRegua);

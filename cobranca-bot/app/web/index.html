@@ -36,10 +36,24 @@
         <div id="planilha-bar" class="planilha-bar"></div>
         <section class="cards" id="cards"></section>
 
-        <section class="toolbar">
+        <section class="toolbar toolbar-filtros">
           <div class="filters">
             <input type="search" id="busca" class="busca-input"
                    placeholder="Buscar cliente, CNPJ, titulo ou e-mail...">
+            <label>Cliente:
+              <select id="filter-cliente">
+                <option value="">Todos</option>
+              </select>
+            </label>
+            <label>Atraso:
+              <select id="filter-atraso">
+                <option value="">Todos</option>
+                <option value="0-15">At&eacute; 15 dias</option>
+                <option value="15-30">15 a 30 dias</option>
+                <option value="30-60">30 a 60 dias</option>
+                <option value="60+">Mais de 60 dias</option>
+              </select>
+            </label>
             <label>Status:
               <select id="filter-status">
                 <option value="">Todos</option>
@@ -50,28 +64,24 @@
             <label class="check-inline">
               <input type="checkbox" id="filter-ordenar" checked> Maior atraso primeiro
             </label>
+            <button id="btn-limpar-filtros" class="btn btn-mini btn-secondary" hidden>Limpar filtros</button>
           </div>
           <div class="toolbar-actions">
+            <div class="visao-toggle">
+              <button id="visao-titulos" class="visao-btn active">T&iacute;tulos</button>
+              <button id="visao-clientes" class="visao-btn">Por cliente</button>
+            </div>
             <span class="sel-info" id="sel-info"></span>
             <button id="btn-agendar" class="btn btn-secondary" disabled>Agendar</button>
             <button id="btn-lote" class="btn btn-primary" disabled>Enviar lote (<span id="sel-count">0</span>)</button>
           </div>
         </section>
 
+        <div id="resumo-filtro" class="resumo-filtro" hidden></div>
+
         <section class="table-wrap">
           <table class="grid">
-            <thead>
-              <tr>
-                <th class="col-check"><input type="checkbox" id="check-all" title="Selecionar todos os resultados do filtro"></th>
-                <th>Cliente</th>
-                <th>T&iacute;tulo</th>
-                <th class="num">Total Atualizado</th>
-                <th>Vencimento</th>
-                <th class="num">Atraso</th>
-                <th>Status</th>
-                <th class="col-acao">A&ccedil;&atilde;o</th>
-              </tr>
-            </thead>
+            <thead id="thead"></thead>
             <tbody id="tbody">
               <tr><td colspan="8" class="empty">Carregando...</td></tr>
             </tbody>

@@ -159,6 +159,42 @@ body {
 .toolbar-actions { display: flex; align-items: center; gap: 12px; }
 .sel-info { font-size: 13px; color: var(--muted); }
 
+/* Toggle de visao (Titulos | Por cliente) */
+.visao-toggle {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.visao-btn {
+  border: none;
+  background: #fff;
+  padding: 7px 14px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--muted);
+  cursor: pointer;
+}
+.visao-btn + .visao-btn { border-left: 1px solid var(--border); }
+.visao-btn.active { background: var(--primary); color: #fff; }
+
+/* Barra de consolidacao do filtro */
+.resumo-filtro {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+  background: var(--primary-soft);
+  border: 1px solid #c9d8ef;
+  border-radius: 8px;
+  padding: 10px 16px;
+  font-size: 13px;
+  color: var(--primary);
+}
+.resumo-filtro strong { font-size: 14px; }
+.resumo-filtro[hidden] { display: none; }
+
+.toolbar-filtros { row-gap: 10px; }
+
 /* ===== Tabela ===== */
 .table-wrap {
   background: var(--surface);
