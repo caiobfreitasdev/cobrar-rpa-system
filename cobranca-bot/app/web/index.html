@@ -3,14 +3,18 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Bot de Cobranca</title>
+  <title>Central de Cobran&ccedil;a IDS</title>
   <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
   <header class="topbar">
-    <div class="topbar-title">
-      <h1>Bot de Cobranca</h1>
-      <span class="subtitle">Contas a receber &middot; envio com confirmacao</span>
+    <div class="topbar-brand">
+      <div id="brand-logo" class="brand-logo"><img src="/static/logo.png" alt="IDS"
+           onerror="this.parentElement.textContent='IDS'"></div>
+      <div class="topbar-title">
+        <h1>Central de Cobran&ccedil;a</h1>
+        <span class="subtitle">IDS Contadores &middot; contas a receber</span>
+      </div>
     </div>
     <div class="topbar-actions">
       <button id="btn-select" class="btn btn-secondary">Selecionar planilha</button>
@@ -19,8 +23,8 @@
   </header>
 
   <nav class="tabs">
-    <button class="tab active" data-tab="cobrancas">Cobrancas</button>
-    <button class="tab" data-tab="relatorio">Relatorio</button>
+    <button class="tab active" data-tab="cobrancas">Cobran&ccedil;as</button>
+    <button class="tab" data-tab="relatorio">Relat&oacute;rio</button>
     <button class="tab" data-tab="agendamento">Agendamento</button>
   </nav>
 
@@ -33,20 +37,22 @@
 
         <section class="toolbar">
           <div class="filters">
-            <label>Status de envio:
+            <input type="search" id="busca" class="busca-input"
+                   placeholder="Buscar cliente, CNPJ, titulo ou e-mail...">
+            <label>Status:
               <select id="filter-status">
                 <option value="">Todos</option>
-                <option value="nao_cobrado">Nao cobrado</option>
+                <option value="nao_cobrado">N&atilde;o cobrado</option>
                 <option value="cobrado">Cobrado</option>
               </select>
             </label>
             <label class="check-inline">
-              <input type="checkbox" id="filter-ordenar" checked> Ordenar por dias de atraso
+              <input type="checkbox" id="filter-ordenar" checked> Maior atraso primeiro
             </label>
           </div>
           <div class="toolbar-actions">
             <span class="sel-info" id="sel-info"></span>
-            <button id="btn-agendar" class="btn btn-secondary" disabled>Agendar selecionados</button>
+            <button id="btn-agendar" class="btn btn-secondary" disabled>Agendar</button>
             <button id="btn-lote" class="btn btn-primary" disabled>Enviar lote (<span id="sel-count">0</span>)</button>
           </div>
         </section>
@@ -55,21 +61,21 @@
           <table class="grid">
             <thead>
               <tr>
-                <th class="col-check"><input type="checkbox" id="check-all"></th>
+                <th class="col-check"><input type="checkbox" id="check-all" title="Selecionar todos os resultados do filtro"></th>
                 <th>Cliente</th>
-                <th>Titulo</th>
+                <th>T&iacute;tulo</th>
                 <th class="num">Total Atualizado</th>
                 <th>Vencimento</th>
-                <th class="num">Dias Atraso</th>
-                <th>E-mail</th>
+                <th class="num">Atraso</th>
                 <th>Status</th>
-                <th class="col-acao">Acao</th>
+                <th class="col-acao">A&ccedil;&atilde;o</th>
               </tr>
             </thead>
             <tbody id="tbody">
-              <tr><td colspan="9" class="empty">Carregando...</td></tr>
+              <tr><td colspan="8" class="empty">Carregando...</td></tr>
             </tbody>
           </table>
+          <div class="paginacao" id="paginacao"></div>
         </section>
       </section>
 
@@ -98,7 +104,7 @@
                 <th>Status</th>
                 <th>Origem</th>
                 <th>Cliente</th>
-                <th>Titulo</th>
+                <th>T&iacute;tulo</th>
                 <th class="num">Valor</th>
                 <th>E-mail</th>
                 <th>Erro</th>
@@ -114,28 +120,28 @@
       <!-- ABA AGENDAMENTO -->
       <section class="tab-panel" id="tab-agendamento">
         <div class="panel panel-block">
-          <h2>Regua automatica</h2>
+          <h2>R&eacute;gua autom&aacute;tica</h2>
           <p class="muted">
-            Quando ativada, o sistema envia a cobranca automaticamente ao atingir os
+            Quando ativada, o sistema envia a cobran&ccedil;a automaticamente ao atingir os
             marcos de dias de atraso abaixo (um envio por marco). O app precisa estar aberto.
           </p>
           <label class="switch-row">
             <input type="checkbox" id="regua-ativa">
-            <span>Ativar regua automatica</span>
+            <span>Ativar r&eacute;gua autom&aacute;tica</span>
           </label>
           <div class="regua-dias">
-            <label>Dias de atraso (separados por virgula):</label>
+            <label>Dias de atraso (separados por v&iacute;rgula):</label>
             <input type="text" id="regua-dias-input" placeholder="7, 15, 30">
           </div>
-          <button id="btn-salvar-regua" class="btn btn-primary">Salvar regua</button>
+          <button id="btn-salvar-regua" class="btn btn-primary">Salvar r&eacute;gua</button>
           <span id="regua-status" class="muted"></span>
         </div>
 
         <div class="panel panel-block">
           <h2>Agendamentos manuais</h2>
           <p class="muted">
-            Para agendar, va em <strong>Cobrancas</strong>, selecione os titulos e clique
-            em <strong>Agendar selecionados</strong>.
+            Para agendar, v&aacute; em <strong>Cobran&ccedil;as</strong>, selecione os t&iacute;tulos e clique
+            em <strong>Agendar</strong>.
           </p>
           <div class="table-wrap">
             <table class="grid">
@@ -143,10 +149,10 @@
                 <tr>
                   <th>Data Agendada</th>
                   <th>Cliente</th>
-                  <th>Titulo</th>
+                  <th>T&iacute;tulo</th>
                   <th class="num">Valor</th>
                   <th>Status</th>
-                  <th class="col-acao">Acao</th>
+                  <th class="col-acao">A&ccedil;&atilde;o</th>
                 </tr>
               </thead>
               <tbody id="agend-tbody">
@@ -160,21 +166,21 @@
 
     <aside class="sidebar">
       <div class="panel">
-        <h2>Ultima carga</h2>
+        <h2>&Uacute;ltima carga</h2>
         <div id="carga-resumo" class="carga-resumo">
           <p class="muted">Recarregue a planilha para sincronizar.</p>
         </div>
       </div>
 
       <div class="panel">
-        <h2>Pendencias antes de producao</h2>
-        <ul id="pendencias-list" class="pendencias"></ul>
-      </div>
-
-      <div class="panel">
         <h2>Status</h2>
         <div id="status-panel" class="status-panel"></div>
       </div>
+
+      <details class="panel panel-details">
+        <summary>Pend&ecirc;ncias t&eacute;cnicas</summary>
+        <ul id="pendencias-list" class="pendencias"></ul>
+      </details>
     </aside>
   </div>
 
@@ -188,6 +194,15 @@
         <button class="btn btn-secondary" id="confirm-cancel">Cancelar</button>
         <button class="btn btn-primary" id="confirm-ok">Confirmar</button>
       </div>
+    </div>
+  </div>
+
+  <!-- Progresso do envio em lote -->
+  <div class="modal-overlay" id="progress-modal" hidden>
+    <div class="modal modal-sm">
+      <h2>Enviando cobran&ccedil;as</h2>
+      <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+      <p class="progress-label" id="progress-label">Preparando...</p>
     </div>
   </div>
 

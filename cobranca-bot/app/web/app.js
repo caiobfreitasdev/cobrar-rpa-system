@@ -1,8 +1,13 @@
 "use strict";
 
+const PAGE_SIZE = 50;
+const CHUNK_ENVIO = 10; // titulos por requisicao no envio em lote
+
 const state = {
   titulos: [],
   selecionados: new Set(),
+  busca: "",
+  pagina: 1,
 };
 
 // ---------- Helpers ----------
@@ -22,6 +27,9 @@ function fmtDataHora(iso) {
   const data = fmtData(partes[0]);
   const hora = partes[1] ? " " + partes[1].slice(0, 5) : "";
   return data + hora;
+}
+function normalizar(s) {
+  return String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
 }
 
 async function api(path, opts) {
@@ -160,34 +168,69 @@ function renderPlanilhaBar(resumo) {
   }
 }
 
-// ---------- Tabela de cobrancas ----------
+// ---------- Tabela de cobrancas (busca + paginacao) ----------
+function titulosFiltrados() {
+  if (!state.busca) return state.titulos;
+  const q = normalizar(state.busca);
+  return state.titulos.filter((t) =>
+    normalizar(t.cliente).includes(q) ||
+    normalizar(t.cd_cliente).includes(q) ||
+    normalizar(t.titulo).includes(q) ||
+    normalizar(t.email).includes(q)
+  );
+}
+
+function badgeAtraso(dias) {
+  const d = dias ?? 0;
+  let cls = "atraso-baixo";
+  if (d >= 30) cls = "atraso-alto";
+  else if (d >= 15) cls = "atraso-medio";
+  return `<span class="badge-atraso ${cls}">${d}d</span>`;
+}
+
 function renderTabela() {
   const tbody = document.getElementById("tbody");
-  if (state.titulos.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="9" class="empty">Nenhum titulo. Selecione/recarregue a planilha.</td></tr>`;
-    updateSelUI();
+  const filtrados = titulosFiltrados();
+  const totalPag = Math.max(1, Math.ceil(filtrados.length / PAGE_SIZE));
+  if (state.pagina > totalPag) state.pagina = totalPag;
+  const inicio = (state.pagina - 1) * PAGE_SIZE;
+  const visiveis = filtrados.slice(inicio, inicio + PAGE_SIZE);
+
+  if (filtrados.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="8" class="empty">${state.busca
+      ? "Nenhum titulo encontrado para a busca."
+      : "Nenhum titulo. Selecione/recarregue a planilha."}</td></tr>`;
+    renderPaginacao(0, totalPag);
+    updateSelUI(filtrados);
     return;
   }
-  tbody.innerHTML = state.titulos.map((t) => {
+
+  tbody.innerHTML = visiveis.map((t) => {
     const checked = state.selecionados.has(t.id) ? "checked" : "";
     const status = t.cobrado
-      ? `<span class="badge cobrado">Cobrado em ${fmtDataHora(t.ultimo_envio)}</span>`
+      ? `<span class="badge cobrado">Cobrado ${fmtDataHora(t.ultimo_envio)}</span>`
       : `<span class="badge nao">Nao cobrado</span>`;
     const temEmail = !!t.email;
-    const email = temEmail ? t.email : `<span class="no-email">sem e-mail</span>`;
-    const atrasoCls = (t.dias_atraso ?? 0) >= 30 ? "atraso-alto" : "";
+    const sub = temEmail
+      ? `${t.cd_cliente ?? ""} &middot; ${t.email}`
+      : `${t.cd_cliente ?? ""} &middot; <span class="no-email">sem e-mail</span>`;
     const btnEnviar = temEmail
       ? `<button class="btn btn-mini btn-primary row-send" data-id="${t.id}">Enviar</button>`
       : `<button class="btn btn-mini" disabled title="Sem e-mail">Enviar</button>`;
     return `
       <tr>
         <td class="col-check"><input type="checkbox" class="row-check" data-id="${t.id}" ${checked}></td>
-        <td>${t.cliente ?? "-"}</td>
-        <td>${t.titulo ?? "-"}</td>
-        <td class="num">${fmtMoeda(t.total_atualizado)}</td>
+        <td class="cel-cliente">
+          <div class="cliente-nome">${t.cliente ?? "-"}</div>
+          <div class="cliente-sub">${sub}</div>
+        </td>
+        <td class="cel-titulo">
+          <div>${t.titulo ?? "-"}</div>
+          <div class="cliente-sub">${t.doc_fiscal ?? ""}</div>
+        </td>
+        <td class="num valor-destaque">${fmtMoeda(t.total_atualizado)}</td>
         <td>${fmtData(t.vencimento)}</td>
-        <td class="num ${atrasoCls}">${t.dias_atraso ?? "-"}</td>
-        <td>${email}</td>
+        <td class="num">${badgeAtraso(t.dias_atraso)}</td>
         <td>${status}</td>
         <td class="col-acao">${btnEnviar}</td>
       </tr>`;
@@ -198,23 +241,51 @@ function renderTabela() {
       const id = Number(cb.dataset.id);
       if (cb.checked) state.selecionados.add(id);
       else state.selecionados.delete(id);
-      updateSelUI();
+      updateSelUI(filtrados);
     });
   });
   document.querySelectorAll(".row-send").forEach((btn) => {
     btn.addEventListener("click", () => enviarIndividual(Number(btn.dataset.id)));
   });
-  updateSelUI();
+
+  renderPaginacao(filtrados.length, totalPag);
+  updateSelUI(filtrados);
 }
 
-function updateSelUI() {
+function renderPaginacao(total, totalPag) {
+  const el = document.getElementById("paginacao");
+  if (total <= PAGE_SIZE) {
+    el.innerHTML = total > 0 ? `<span class="pag-info">${total} titulo(s)</span>` : "";
+    return;
+  }
+  const p = state.pagina;
+  el.innerHTML = `
+    <span class="pag-info">${total} titulo(s)</span>
+    <div class="pag-controls">
+      <button class="btn btn-mini btn-secondary" data-pag="1" ${p === 1 ? "disabled" : ""}>&laquo;</button>
+      <button class="btn btn-mini btn-secondary" data-pag="${p - 1}" ${p === 1 ? "disabled" : ""}>&lsaquo;</button>
+      <span class="pag-atual">Pagina ${p} de ${totalPag}</span>
+      <button class="btn btn-mini btn-secondary" data-pag="${p + 1}" ${p === totalPag ? "disabled" : ""}>&rsaquo;</button>
+      <button class="btn btn-mini btn-secondary" data-pag="${totalPag}" ${p === totalPag ? "disabled" : ""}>&raquo;</button>
+    </div>
+  `;
+  el.querySelectorAll("[data-pag]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      state.pagina = Number(btn.dataset.pag);
+      renderTabela();
+    });
+  });
+}
+
+function updateSelUI(filtrados) {
   const n = state.selecionados.size;
   document.getElementById("sel-count").textContent = n;
   document.getElementById("btn-lote").disabled = n === 0;
   document.getElementById("btn-agendar").disabled = n === 0;
   document.getElementById("sel-info").textContent = n > 0 ? `${n} selecionado(s)` : "";
   const all = document.getElementById("check-all");
-  all.checked = n > 0 && n === state.titulos.length;
+  const lista = filtrados || titulosFiltrados();
+  all.checked = lista.length > 0 && lista.every((t) => state.selecionados.has(t.id));
 }
 
 function tituloById(id) {
@@ -231,7 +302,7 @@ async function enviarIndividual(id) {
     okLabel: "Enviar agora",
   });
   if (!ok) return;
-  await dispararEnvio([id], `Enviando para ${t.cliente}...`);
+  await dispararEnvio([id]);
 }
 
 async function enviarLote() {
@@ -249,23 +320,48 @@ async function enviarLote() {
     okLabel: "Enviar lote",
   });
   if (!ok) return;
-  await dispararEnvio(ids, `Enviando ${ids.length} cobranca(s)...`);
+  await dispararEnvio(ids);
 }
 
-async function dispararEnvio(ids, msgProgresso) {
-  toast(msgProgresso);
+function setProgresso(feitos, total) {
+  const pct = total > 0 ? Math.round((feitos / total) * 100) : 0;
+  document.getElementById("progress-fill").style.width = pct + "%";
+  document.getElementById("progress-label").textContent = `${feitos} de ${total} processado(s) (${pct}%)`;
+}
+
+async function dispararEnvio(ids) {
+  const total = ids.length;
+  const modal = document.getElementById("progress-modal");
+  const agregado = { enviados: 0, falhas: 0, pendentes: 0 };
+
+  if (total > CHUNK_ENVIO) {
+    modal.hidden = false;
+    setProgresso(0, total);
+  } else {
+    toast("Enviando...");
+  }
+
   try {
-    const res = await api("/api/lote/enviar", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ titulo_ids: ids }),
-    });
+    for (let i = 0; i < total; i += CHUNK_ENVIO) {
+      const chunk = ids.slice(i, i + CHUNK_ENVIO);
+      const res = await api("/api/lote/enviar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ titulo_ids: chunk }),
+      });
+      agregado.enviados += res.total_enviados;
+      agregado.falhas += res.total_falhas;
+      agregado.pendentes += res.total_pendentes;
+      setProgresso(Math.min(i + CHUNK_ENVIO, total), total);
+    }
     state.selecionados.clear();
-    const kind = res.total_falhas > 0 ? "bad" : "ok";
-    toast(`Enviados: ${res.total_enviados} | Falhas: ${res.total_falhas} | Pendentes: ${res.total_pendentes}`, kind);
+    const kind = agregado.falhas > 0 ? "bad" : "ok";
+    toast(`Enviados: ${agregado.enviados} | Falhas: ${agregado.falhas} | Pendentes: ${agregado.pendentes}`, kind);
     await recarregarTudo();
   } catch (e) {
     toast("Erro no envio: " + e.message, "bad");
+  } finally {
+    modal.hidden = true;
   }
 }
 
@@ -340,7 +436,6 @@ function exportarRelatorio() {
   const status = document.getElementById("rel-filter-status").value;
   const params = new URLSearchParams();
   if (status) params.set("status", status);
-  // abre o download direto
   window.location.href = `/api/relatorio/export?${params.toString()}`;
 }
 
@@ -471,11 +566,17 @@ function initEvents() {
   document.getElementById("btn-reload").addEventListener("click", recarregarPlanilha);
   document.getElementById("btn-lote").addEventListener("click", enviarLote);
   document.getElementById("btn-agendar").addEventListener("click", agendarSelecionados);
-  document.getElementById("filter-status").addEventListener("change", carregarTitulos);
-  document.getElementById("filter-ordenar").addEventListener("change", carregarTitulos);
+  document.getElementById("filter-status").addEventListener("change", () => { state.pagina = 1; carregarTitulos(); });
+  document.getElementById("filter-ordenar").addEventListener("change", () => { state.pagina = 1; carregarTitulos(); });
+  document.getElementById("busca").addEventListener("input", (e) => {
+    state.busca = e.target.value;
+    state.pagina = 1;
+    renderTabela();
+  });
   document.getElementById("check-all").addEventListener("change", (e) => {
-    if (e.target.checked) state.titulos.forEach((t) => state.selecionados.add(t.id));
-    else state.selecionados.clear();
+    const filtrados = titulosFiltrados();
+    if (e.target.checked) filtrados.forEach((t) => state.selecionados.add(t.id));
+    else filtrados.forEach((t) => state.selecionados.delete(t.id));
     renderTabela();
   });
   document.getElementById("rel-filter-status").addEventListener("change", carregarRelatorio);

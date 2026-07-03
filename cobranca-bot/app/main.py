@@ -16,7 +16,7 @@ WEB_DIR = resource_path("app", "web")
 HOST = "127.0.0.1"
 PORT = 8756
 
-app = FastAPI(title="Bot de Cobranca")
+app = FastAPI(title="Central de Cobranca IDS")
 app.include_router(router)
 
 # Garante o schema do banco no import (cobre execucao via uvicorn e via exe).
@@ -89,7 +89,7 @@ def main():
         import webview
 
         webview.create_window(
-            "Bot de Cobranca",
+            "Central de Cobranca IDS",
             f"http://{HOST}:{PORT}/",
             width=1200,
             height=800,

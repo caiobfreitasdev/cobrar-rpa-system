@@ -56,7 +56,7 @@ exe = EXE(
     a.zipfiles,
     a.datas,
     [],
-    name="BotCobranca",
+    name="CentralCobranca",
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
