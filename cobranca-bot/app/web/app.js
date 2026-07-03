@@ -273,14 +273,15 @@ async function dispararEnvio(ids, msgProgresso) {
 async function agendarSelecionados() {
   const ids = [...state.selecionados];
   if (ids.length === 0) return;
-  // valor default: agora + 1h, formato datetime-local
-  const agora = new Date(Date.now() + 3600 * 1000);
+  // default: agora + 1h; min: agora (nao permitir agendar no passado)
   const pad = (n) => String(n).padStart(2, "0");
-  const def = `${agora.getFullYear()}-${pad(agora.getMonth() + 1)}-${pad(agora.getDate())}T${pad(agora.getHours())}:${pad(agora.getMinutes())}`;
+  const fmtLocal = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  const def = fmtLocal(new Date(Date.now() + 3600 * 1000));
+  const min = fmtLocal(new Date());
   const ok = await confirmar({
     title: "Agendar envio",
     msg: `Agendar ${ids.length} titulo(s) para envio automatico em:`,
-    extraHtml: `<input type="datetime-local" id="agendar-dt" value="${def}" class="dt-input">`,
+    extraHtml: `<input type="datetime-local" id="agendar-dt" value="${def}" min="${min}" class="dt-input">`,
     okLabel: "Agendar",
   });
   if (!ok) return;

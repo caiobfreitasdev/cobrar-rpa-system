@@ -6,7 +6,7 @@ from typing import Any, Optional
 import pandas as pd
 
 from app.core.config import get_excel_path
-from app.core.db import db_session
+from app.core.db import db_session, agora_local
 
 SHEET_NAME = "BASE"
 
@@ -29,9 +29,12 @@ COLUMN_MAP = {
 }
 
 # Campos que entram no hash para detectar alteracao relevante.
+# dias_atraso NAO entra: muda todo dia na planilha e e calculado
+# internamente a partir do vencimento (senao toda carga marcaria
+# todos os titulos como "alterados").
 HASH_FIELDS = [
     "vl_titulo", "juros", "multa", "total_atualizado",
-    "vencimento", "dias_atraso", "email", "link_cobranca",
+    "vencimento", "email", "link_cobranca",
 ]
 
 
@@ -155,8 +158,7 @@ def sync() -> dict:
                     (uf, cd_cliente, cliente, email, titulo, doc_fiscal, vl_titulo,
                      juros, multa, total_atualizado, emissao, vencimento, dias_atraso,
                      obs, link_cobranca, hash_linha, ativo, created_at, updated_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1,
-                            CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
                     """,
                     (
                         rec["uf"], rec["cd_cliente"], rec["cliente"], rec["email"],
@@ -164,6 +166,7 @@ def sync() -> dict:
                         rec["multa"], rec["total_atualizado"], rec["emissao"],
                         rec["vencimento"], rec["dias_atraso"], rec["obs"],
                         rec["link_cobranca"], rec["hash_linha"],
+                        agora_local(), agora_local(),
                     ),
                 )
                 novos += 1
@@ -174,7 +177,7 @@ def sync() -> dict:
                         uf = ?, cliente = ?, email = ?, doc_fiscal = ?, vl_titulo = ?,
                         juros = ?, multa = ?, total_atualizado = ?, emissao = ?,
                         vencimento = ?, dias_atraso = ?, obs = ?, link_cobranca = ?,
-                        hash_linha = ?, ativo = 1, updated_at = CURRENT_TIMESTAMP
+                        hash_linha = ?, ativo = 1, updated_at = ?
                     WHERE id = ?
                     """,
                     (
@@ -182,7 +185,7 @@ def sync() -> dict:
                         rec["vl_titulo"], rec["juros"], rec["multa"],
                         rec["total_atualizado"], rec["emissao"], rec["vencimento"],
                         rec["dias_atraso"], rec["obs"], rec["link_cobranca"],
-                        rec["hash_linha"], existing["id"],
+                        rec["hash_linha"], agora_local(), existing["id"],
                     ),
                 )
                 alterados += 1
@@ -199,8 +202,8 @@ def sync() -> dict:
         for t in ativos:
             if (t["cd_cliente"], t["titulo"]) not in chaves_carga:
                 conn.execute(
-                    "UPDATE titulos SET ativo = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-                    (t["id"],),
+                    "UPDATE titulos SET ativo = 0, updated_at = ? WHERE id = ?",
+                    (agora_local(), t["id"]),
                 )
                 baixados += 1
 

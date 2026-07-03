@@ -2,7 +2,7 @@
 import re
 
 from app.core.config import settings, resource_path
-from app.core.db import db_session
+from app.core.db import db_session, agora_local
 from app.services import graph_client
 from app.services.titulos import buscar_por_ids
 from app.rules import pendencias
@@ -68,9 +68,9 @@ def _log_envio(titulo_id: int, status: str, erro: str = None,
                origem: str = "manual", regra_dias: int = None) -> None:
     with db_session() as conn:
         conn.execute(
-            """INSERT INTO envios (titulo_id, status_envio, canal, origem, regra_dias, erro)
-               VALUES (?, ?, 'email', ?, ?, ?)""",
-            (titulo_id, status, origem, regra_dias, erro),
+            """INSERT INTO envios (titulo_id, data_envio, status_envio, canal, origem, regra_dias, erro)
+               VALUES (?, ?, ?, 'email', ?, ?, ?)""",
+            (titulo_id, agora_local(), status, origem, regra_dias, erro),
         )
 
 

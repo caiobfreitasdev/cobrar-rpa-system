@@ -3,6 +3,14 @@ from typing import Optional
 
 from app.core.db import db_session
 
+# Dias de atraso calculados internamente (hoje - vencimento), sempre atuais
+# mesmo sem recarregar a planilha. Fallback para o valor da planilha quando
+# nao ha vencimento. Nunca negativo (titulo a vencer = 0).
+DIAS_ATRASO_SQL = (
+    "COALESCE(MAX(0, CAST(julianday(date('now','localtime')) "
+    "- julianday(t.vencimento) AS INTEGER)), t.dias_atraso)"
+)
+
 
 def listar_titulos(
     apenas_ativos: bool = True,
@@ -16,13 +24,14 @@ def listar_titulos(
         where.append("t.ativo = 1")
 
     where_sql = ("WHERE " + " AND ".join(where)) if where else ""
-    order_sql = "ORDER BY t.dias_atraso DESC" if ordenar_por_atraso else "ORDER BY t.cliente"
+    order_sql = f"ORDER BY {DIAS_ATRASO_SQL} DESC" if ordenar_por_atraso else "ORDER BY t.cliente"
 
     sql = f"""
         SELECT
             t.id, t.uf, t.cd_cliente, t.cliente, t.email, t.titulo,
             t.doc_fiscal, t.vl_titulo, t.juros, t.multa, t.total_atualizado,
-            t.emissao, t.vencimento, t.dias_atraso, t.obs, t.link_cobranca, t.ativo,
+            t.emissao, t.vencimento, {DIAS_ATRASO_SQL} AS dias_atraso,
+            t.obs, t.link_cobranca, t.ativo,
             (SELECT MAX(e.data_envio) FROM envios e
                 WHERE e.titulo_id = t.id AND e.status_envio = 'enviado') AS ultimo_envio
         FROM titulos t
@@ -51,10 +60,16 @@ def buscar_por_ids(ids: list[int]) -> list[dict]:
     if not ids:
         return []
     placeholders = ",".join("?" for _ in ids)
-    sql = f"SELECT * FROM titulos WHERE id IN ({placeholders})"
+    sql = f"""SELECT t.*, {DIAS_ATRASO_SQL} AS dias_atraso_calc
+              FROM titulos t WHERE t.id IN ({placeholders})"""
     with db_session() as conn:
         rows = conn.execute(sql, ids).fetchall()
-    return [dict(r) for r in rows]
+    result = []
+    for r in rows:
+        d = dict(r)
+        d["dias_atraso"] = d.pop("dias_atraso_calc")
+        result.append(d)
+    return result
 
 
 def resumo_geral() -> dict:

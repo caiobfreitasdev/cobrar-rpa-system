@@ -13,6 +13,7 @@ from datetime import datetime
 from app.core.config import get_regua
 from app.core.db import db_session
 from app.services import email_sender
+from app.services.titulos import DIAS_ATRASO_SQL
 
 
 def _agora() -> str:
@@ -32,16 +33,19 @@ def criar_agendamentos(titulo_ids: list[int], data_agendada: str) -> dict:
     if len(dt) == 16:  # sem segundos
         dt += ":00"
     try:
-        datetime.strptime(dt, "%Y-%m-%d %H:%M:%S")
+        quando = datetime.strptime(dt, "%Y-%m-%d %H:%M:%S")
     except ValueError:
         raise ValueError("Data/hora invalida")
+    if quando <= datetime.now():
+        raise ValueError("A data/hora do agendamento deve ser no futuro")
 
     criados = 0
     with db_session() as conn:
         for tid in titulo_ids:
             conn.execute(
-                "INSERT INTO agendamentos (titulo_id, data_agendada, status) VALUES (?, ?, 'pendente')",
-                (tid, dt),
+                """INSERT INTO agendamentos (titulo_id, data_agendada, status, created_at)
+                   VALUES (?, ?, 'pendente', ?)""",
+                (tid, dt, _agora()),
             )
             criados += 1
     return {"criados": criados, "data_agendada": dt}
@@ -74,16 +78,30 @@ def cancelar(agendamento_id: int) -> None:
 # Processamento (chamado pelo scheduler)
 # ---------------------------------------------------------------------------
 def _processar_manuais() -> int:
-    """Dispara agendamentos manuais cuja hora ja chegou. Retorna qtos enviados."""
+    """Dispara agendamentos manuais cuja hora ja chegou. Retorna qtos enviados.
+
+    Titulos que sairam da carga (ativo = 0, provavel pagamento) NAO sao
+    cobrados: o agendamento e cancelado com o motivo registrado.
+    """
     agora = _agora()
     with db_session() as conn:
         vencidos = conn.execute(
-            "SELECT id, titulo_id FROM agendamentos WHERE status = 'pendente' AND data_agendada <= ?",
+            """SELECT a.id, a.titulo_id, t.ativo
+               FROM agendamentos a
+               JOIN titulos t ON t.id = a.titulo_id
+               WHERE a.status = 'pendente' AND a.data_agendada <= ?""",
             (agora,),
         ).fetchall()
 
     enviados = 0
     for ag in vencidos:
+        if not ag["ativo"]:
+            with db_session() as conn:
+                conn.execute(
+                    "UPDATE agendamentos SET status='cancelado', erro=?, executado_em=? WHERE id=?",
+                    ("titulo baixado na planilha (provavel pagamento)", _agora(), ag["id"]),
+                )
+            continue
         res = email_sender.enviar_lote([ag["titulo_id"]], origem="agendado")
         ok = res["total_enviados"] > 0
         with db_session() as conn:
@@ -122,8 +140,9 @@ def _processar_regua() -> int:
 
     with db_session() as conn:
         titulos = conn.execute(
-            """SELECT id, dias_atraso, email FROM titulos
-               WHERE ativo = 1 AND email IS NOT NULL AND TRIM(email) <> ''"""
+            f"""SELECT t.id, {DIAS_ATRASO_SQL} AS dias_atraso, t.email
+                FROM titulos t
+                WHERE t.ativo = 1 AND t.email IS NOT NULL AND TRIM(t.email) <> ''"""
         ).fetchall()
 
     enviados = 0

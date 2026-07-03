@@ -1,8 +1,14 @@
 """Conexao e criacao de schema SQLite."""
 import sqlite3
 from contextlib import contextmanager
+from datetime import datetime
 
 from app.core.config import settings
+
+
+def agora_local() -> str:
+    """Timestamp em hora local (o CURRENT_TIMESTAMP do SQLite e UTC)."""
+    return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS titulos (
