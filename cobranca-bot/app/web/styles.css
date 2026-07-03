@@ -34,19 +34,25 @@ body {
   top: 0;
   z-index: 10;
 }
-.topbar-brand { display: flex; align-items: center; gap: 14px; }
+.topbar-brand { display: flex; align-items: center; gap: 18px; }
 .brand-logo {
-  height: 40px;
-  min-width: 40px;
+  height: 64px;
+  min-width: 64px;
   display: flex;
   align-items: center;
   justify-content: center;
   color: #fff;
   font-weight: 800;
-  font-size: 15px;
+  font-size: 20px;
   letter-spacing: 1px;
 }
-.brand-logo img { height: 40px; max-width: 160px; object-fit: contain; display: block; }
+.brand-logo img {
+  height: 64px;
+  max-width: 300px;
+  object-fit: contain;
+  display: block;
+  image-rendering: -webkit-optimize-contrast; /* nitidez no downscale */
+}
 .topbar-title h1 { margin: 0; font-size: 18px; color: #fff; letter-spacing: 0.2px; }
 .subtitle { font-size: 12px; color: rgba(255, 255, 255, 0.75); }
 .topbar-actions { display: flex; gap: 10px; }
