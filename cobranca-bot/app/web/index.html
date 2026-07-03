@@ -26,6 +26,7 @@
     <button class="tab active" data-tab="cobrancas">Cobran&ccedil;as</button>
     <button class="tab" data-tab="relatorio">Relat&oacute;rio</button>
     <button class="tab" data-tab="agendamento">Agendamento</button>
+    <button class="tab" data-tab="pendencias">Pend&ecirc;ncias</button>
   </nav>
 
   <div class="layout">
@@ -162,6 +163,40 @@
           </div>
         </div>
       </section>
+      <!-- ABA PENDENCIAS -->
+      <section class="tab-panel" id="tab-pendencias">
+        <section class="cards" id="pend-cards"></section>
+
+        <div class="panel panel-block">
+          <h2>T&iacute;tulos liberados SEM e-mail (n&atilde;o podem ser cobrados)</h2>
+          <p class="muted">
+            Estes clientes est&atilde;o com status COBRAN&Ccedil;A/NEGATIVADO, mas a coluna
+            <strong>Email</strong> da aba BASE est&aacute; vazia. Preencha na planilha e
+            clique em <strong>Recarregar planilha</strong>.
+          </p>
+          <div class="table-wrap">
+            <table class="grid">
+              <thead>
+                <tr>
+                  <th>Cliente</th>
+                  <th>T&iacute;tulo</th>
+                  <th class="num">Valor</th>
+                  <th>Vencimento</th>
+                  <th class="num">Atraso</th>
+                </tr>
+              </thead>
+              <tbody id="pend-tbody">
+                <tr><td colspan="5" class="empty">Carregando...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="panel panel-block">
+          <h2>Pend&ecirc;ncias t&eacute;cnicas do projeto</h2>
+          <ul id="pendencias-list" class="pendencias"></ul>
+        </div>
+      </section>
     </main>
 
     <aside class="sidebar">
@@ -177,10 +212,6 @@
         <div id="status-panel" class="status-panel"></div>
       </div>
 
-      <details class="panel panel-details">
-        <summary>Pend&ecirc;ncias t&eacute;cnicas</summary>
-        <ul id="pendencias-list" class="pendencias"></ul>
-      </details>
     </aside>
   </div>
 

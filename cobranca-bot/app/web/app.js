@@ -86,6 +86,7 @@ function initTabs() {
       document.getElementById("tab-" + tab.dataset.tab).classList.add("active");
       if (tab.dataset.tab === "relatorio") carregarRelatorio();
       if (tab.dataset.tab === "agendamento") { carregarAgendamentos(); carregarRegua(); }
+      if (tab.dataset.tab === "pendencias") carregarAbaPendencias();
     });
   });
 }
@@ -504,6 +505,44 @@ async function salvarRegua() {
   } catch (e) {
     toast("Erro ao salvar regua: " + e.message, "bad");
   }
+}
+
+// ---------- Aba Pendencias ----------
+async function carregarAbaPendencias() {
+  const [titulosAll, resumo, tecnicas] = await Promise.all([
+    api("/api/titulos"),
+    api("/api/resumo"),
+    api("/api/pendencias"),
+  ]);
+
+  const semEmail = titulosAll.filter((t) => !t.email);
+  const bloqueados = resumo.geral?.bloqueados ?? 0;
+  const abaStatus = resumo.ultima_carga?.status_disponivel;
+
+  document.getElementById("pend-cards").innerHTML = `
+    <div class="card warn"><div class="label">Liberados sem e-mail</div><div class="value">${semEmail.length}</div></div>
+    <div class="card"><div class="label">Bloqueados por status (ocultos)</div><div class="value">${bloqueados}</div></div>
+    <div class="card ${abaStatus ? "ok" : "warn"}"><div class="label">Aba INADIMPLENCIA</div><div class="value" style="font-size:18px;">${abaStatus == null ? "-" : abaStatus ? "Lida" : "Ausente"}</div></div>
+  `;
+
+  const tbody = document.getElementById("pend-tbody");
+  if (semEmail.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="5" class="empty">Nenhuma pendencia de e-mail — todos os titulos liberados tem destinatario.</td></tr>`;
+  } else {
+    tbody.innerHTML = semEmail.map((t) => `
+      <tr>
+        <td class="cel-cliente">
+          <div class="cliente-nome">${t.cliente ?? "-"}</div>
+          <div class="cliente-sub">${t.cd_cliente ?? ""}</div>
+        </td>
+        <td>${t.titulo ?? "-"}</td>
+        <td class="num valor-destaque">${fmtMoeda(t.total_atualizado)}</td>
+        <td>${fmtData(t.vencimento)}</td>
+        <td class="num">${badgeAtraso(t.dias_atraso)}</td>
+      </tr>`).join("");
+  }
+
+  renderPendencias(tecnicas);
 }
 
 // ---------- Data loading ----------
