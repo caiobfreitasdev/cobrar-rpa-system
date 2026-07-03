@@ -13,7 +13,7 @@ from datetime import datetime
 from app.core.config import get_regua
 from app.core.db import db_session
 from app.services import email_sender
-from app.services.titulos import DIAS_ATRASO_SQL
+from app.services.titulos import DIAS_ATRASO_SQL, LIBERADO_SQL
 
 
 def _agora() -> str:
@@ -142,7 +142,8 @@ def _processar_regua() -> int:
         titulos = conn.execute(
             f"""SELECT t.id, {DIAS_ATRASO_SQL} AS dias_atraso, t.email
                 FROM titulos t
-                WHERE t.ativo = 1 AND t.email IS NOT NULL AND TRIM(t.email) <> ''"""
+                WHERE t.ativo = 1 AND {LIBERADO_SQL}
+                  AND t.email IS NOT NULL AND TRIM(t.email) <> ''"""
         ).fetchall()
 
     enviados = 0

@@ -2,6 +2,11 @@
 from typing import Optional
 
 from app.core.db import db_session
+from app.rules.pendencias import STATUS_PERMITIDOS
+
+# Filtro SQL da lista fechada (clientes liberados pela aba INADIMPLENCIA).
+_STATUS_IN = ",".join(f"'{s}'" for s in sorted(STATUS_PERMITIDOS))
+LIBERADO_SQL = f"t.status_cliente IN ({_STATUS_IN})"
 
 # Dias de atraso calculados internamente (hoje - vencimento), sempre atuais
 # mesmo sem recarregar a planilha. Fallback para o valor da planilha quando
@@ -22,6 +27,8 @@ def listar_titulos(
     params: list = []
     if apenas_ativos:
         where.append("t.ativo = 1")
+        # Lista fechada: bloqueados ficam ocultos do dashboard.
+        where.append(LIBERADO_SQL)
 
     where_sql = ("WHERE " + " AND ".join(where)) if where else ""
     order_sql = f"ORDER BY {DIAS_ATRASO_SQL} DESC" if ordenar_por_atraso else "ORDER BY t.cliente"
@@ -31,7 +38,7 @@ def listar_titulos(
             t.id, t.uf, t.cd_cliente, t.cliente, t.email, t.titulo,
             t.doc_fiscal, t.vl_titulo, t.juros, t.multa, t.total_atualizado,
             t.emissao, t.vencimento, {DIAS_ATRASO_SQL} AS dias_atraso,
-            t.obs, t.link_cobranca, t.ativo,
+            t.obs, t.link_cobranca, t.status_cliente, t.ativo,
             (SELECT MAX(e.data_envio) FROM envios e
                 WHERE e.titulo_id = t.id AND e.status_envio = 'enviado') AS ultimo_envio
         FROM titulos t
@@ -74,18 +81,23 @@ def buscar_por_ids(ids: list[int]) -> list[dict]:
 
 def resumo_geral() -> dict:
     with db_session() as conn:
-        total_ativos = conn.execute(
-            "SELECT COUNT(*) c FROM titulos WHERE ativo = 1"
+        total_geral = conn.execute(
+            "SELECT COUNT(*) c FROM titulos t WHERE t.ativo = 1"
         ).fetchone()["c"]
+        total_ativos = conn.execute(
+            f"SELECT COUNT(*) c FROM titulos t WHERE t.ativo = 1 AND {LIBERADO_SQL}"
+        ).fetchone()["c"]
+        bloqueados = total_geral - total_ativos
         cobrados = conn.execute(
-            """
+            f"""
             SELECT COUNT(DISTINCT t.id) c FROM titulos t
             JOIN envios e ON e.titulo_id = t.id AND e.status_envio = 'enviado'
-            WHERE t.ativo = 1
+            WHERE t.ativo = 1 AND {LIBERADO_SQL}
             """
         ).fetchone()["c"]
     return {
         "total_ativos": total_ativos,
         "cobrados": cobrados,
         "nao_cobrados": total_ativos - cobrados,
+        "bloqueados": bloqueados,
     }

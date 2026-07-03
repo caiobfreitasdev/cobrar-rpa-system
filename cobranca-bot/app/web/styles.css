@@ -223,6 +223,18 @@ body {
   font-weight: 700;
   font-size: 12.5px;
 }
+.badge-st {
+  display: inline-block;
+  padding: 1px 7px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  vertical-align: 1px;
+}
+.badge-st.st-cob { background: var(--primary-soft); color: var(--primary); }
+.badge-st.st-neg { background: #fef3c7; color: var(--warn); }
+
 .badge-atraso.atraso-baixo { background: #f1f5f9; color: var(--muted); }
 .badge-atraso.atraso-medio { background: #fef3c7; color: var(--warn); }
 .badge-atraso.atraso-alto { background: #fee2e2; color: var(--danger); }

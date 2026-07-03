@@ -28,6 +28,7 @@ CREATE TABLE IF NOT EXISTS titulos (
     dias_atraso INTEGER,
     obs TEXT,
     link_cobranca TEXT,
+    status_cliente TEXT,
     hash_linha TEXT,
     ativo INTEGER DEFAULT 1,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -91,6 +92,9 @@ def _migrar(conn) -> None:
         conn.execute("ALTER TABLE envios ADD COLUMN origem TEXT DEFAULT 'manual'")
     if "regra_dias" not in cols:
         conn.execute("ALTER TABLE envios ADD COLUMN regra_dias INTEGER")
+    cols_t = {r["name"] for r in conn.execute("PRAGMA table_info(titulos)")}
+    if "status_cliente" not in cols_t:
+        conn.execute("ALTER TABLE titulos ADD COLUMN status_cliente TEXT")
 
 
 def init_db() -> None:

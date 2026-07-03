@@ -1,57 +1,50 @@
-"""Regras de negocio pendentes para producao.
+"""Regras de negocio do envio.
 
-Nesta fase TODAS as flags estao DESLIGADAS e nao tem efeito no envio.
-O envio segue sempre manual, com confirmacao explicita de lote.
+TRAVA_STATUS (ATIVA): lista fechada por cliente, vinda da aba INADIMPLENCIA
+da planilha (cruzamento por nome). So recebem cobranca os clientes com
+status permitido; quem nao esta na aba (ou esta com outro status, ex:
+JURIDICO) fica bloqueado e oculto do dashboard.
 """
 from typing import Optional
 
-# ---------------------------------------------------------------------------
-# FLAGS (todas desligadas nesta fase)
-# ---------------------------------------------------------------------------
-
-# TODO: Quando ativada, bloquear envio para clientes com STATUS
-#       JURIDICO / NEGATIVADO / ACORDO.
-#       A coluna STATUS ainda NAO existe na aba BASE. Quando ela existir,
-#       carregar o campo em titulos e implementar a checagem em
-#       bloquear_envio() abaixo.
-TRAVA_STATUS = False
-
-# TODO: Regua de cobranca automatica por dias de atraso.
-#       Por enquanto NAO ha automacao: o operador seleciona e confirma o lote.
-REGUA_AUTOMATICA = False
+# Lista fechada: somente estes status liberam o envio.
+TRAVA_STATUS = True
+STATUS_PERMITIDOS = {"COBRANCA", "NEGATIVADO"}
 
 
-# Status que, quando a TRAVA_STATUS estiver ligada, bloqueiam o envio.
-STATUS_BLOQUEADOS = {"JURIDICO", "NEGATIVADO", "ACORDO"}
+def envio_liberado(titulo: dict) -> bool:
+    """True se o cliente do titulo esta liberado para cobranca."""
+    status = (titulo.get("status_cliente") or "").strip().upper()
+    return status in STATUS_PERMITIDOS
 
 
 def bloquear_envio(titulo: dict) -> Optional[str]:
-    """Retorna o motivo do bloqueio, ou None se o envio esta liberado.
-
-    Gancho pronto para a TRAVA_STATUS. Como a flag esta desligada e a coluna
-    STATUS ainda nao existe, sempre retorna None nesta fase.
-    """
-    if TRAVA_STATUS:
-        status = (titulo.get("status") or "").strip().upper()
-        if status in STATUS_BLOQUEADOS:
-            return f"bloqueado por STATUS={status}"
-    return None
+    """Retorna o motivo do bloqueio, ou None se o envio esta liberado."""
+    if not TRAVA_STATUS:
+        return None
+    if envio_liberado(titulo):
+        return None
+    status = (titulo.get("status_cliente") or "").strip().upper()
+    if status:
+        return f"bloqueado por STATUS={status}"
+    return "cliente fora da aba INADIMPLENCIA (sem status)"
 
 
 def pendencias_producao() -> list[dict]:
-    """Lista as pendencias a resolver antes de ir para producao (para o dashboard)."""
+    """Lista as pendencias tecnicas (painel recolhivel do dashboard)."""
     return [
         {
             "chave": "TRAVA_STATUS",
             "ativa": TRAVA_STATUS,
-            "titulo": "Trava de STATUS",
+            "titulo": "Trava de STATUS (ativa)",
             "descricao": (
-                "Bloquear envio para clientes JURIDICO / NEGATIVADO / ACORDO. "
-                "Coluna STATUS ainda nao existe na aba BASE."
+                "Lista fechada pela aba INADIMPLENCIA: so recebem cobranca "
+                "clientes com status COBRANCA ou NEGATIVADO. Demais ficam "
+                "ocultos e bloqueados."
             ),
         },
         {
-            "chave": "TRAVA_LINK",
+            "chave": "SECRET_AZURE",
             "ativa": False,
             "titulo": "Conferir secret do Azure (expira)",
             "descricao": (
@@ -66,15 +59,6 @@ def pendencias_producao() -> list[dict]:
             "descricao": (
                 "Coluna 'Link de Cobranca' em construcao. So o campo/placeholder "
                 "esta pronto; a validacao do link real virá depois."
-            ),
-        },
-        {
-            "chave": "COLUNA_EMAIL",
-            "ativa": False,
-            "titulo": "Coluna de Email na BASE",
-            "descricao": (
-                "Coluna 'Email' em construcao ao lado de 'Cliente'. Lida se existir; "
-                "sem ela, envios ficam pendentes por falta de e-mail."
             ),
         },
     ]

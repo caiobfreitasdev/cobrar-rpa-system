@@ -54,12 +54,27 @@ linhas = [
 ]
 
 df = pd.DataFrame(linhas)
+
+# Aba INADIMPLENCIA no formato real: cabecalho na LINHA 2 (indice 1),
+# CLIENTES na coluna D e STATUS na coluna H. Farmacia fica fora da lista.
+vazio = [None, None, None]
+inad_linhas = [
+    vazio + ["RELATORIO DE INADIMPLENCIA", None, None, None, None, None],   # linha 1: titulo solto
+    vazio + ["CLIENTES", "INADIMPLÊNCIA ", "IMPACTO %", "TIPO", "STATUS", "VENCIMENTO"],
+    vazio + ["Padaria Aurora LTDA", 2043.00, 0.31, "VENDA", "COBRANÇA", "2026-05-10"],
+    vazio + ["Mercado Sao Jorge ME", 828.00, 0.12, "VENDA", "NEGATIVADO", "2026-06-01"],
+    vazio + ["Auto Pecas Veloz LTDA", 3200.00, 0.48, "VENDA", "JURIDICO", "2026-06-20"],
+]
+inad = pd.DataFrame(inad_linhas)
+
 with pd.ExcelWriter(OUT, engine="openpyxl") as writer:
     df.to_excel(writer, sheet_name="BASE", index=False)
+    inad.to_excel(writer, sheet_name="INADIMPLÊNCIA", index=False, header=False)
     # Aba extra que deve ser IGNORADA pelo sync
     pd.DataFrame({"ignore": ["esta aba nao deve ser lida"]}).to_excel(
         writer, sheet_name="OUTRA", index=False
     )
 
 print(f"Planilha de teste gerada: {OUT}")
-print(f"{len(df)} linhas na aba BASE (1 sem e-mail, 1 aba extra a ignorar).")
+print(f"{len(df)} linhas na BASE + aba INADIMPLENCIA (Aurora=COBRANCA, "
+      f"Sao Jorge=NEGATIVADO, Veloz=JURIDICO, Farmacia fora da lista).")

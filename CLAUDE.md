@@ -13,7 +13,11 @@ convencoes, processos e pendencias. Leia antes de mexer no codigo.
   Disparos automaticos existem apenas quando o operador configura
   explicitamente (agendamento manual ou regua automatica).
 - **Um e-mail por boleto**.
-- Ler **somente a aba `BASE`** do Excel. Demais abas sao ignoradas.
+- Ler as abas **`BASE`** (titulos) e **`INADIMPLENCIA`** (status por cliente).
+  Demais abas sao ignoradas.
+- **Lista fechada de envio**: so recebem cobranca clientes presentes na aba
+  INADIMPLENCIA com status **COBRANCA** ou **NEGATIVADO** (cruzamento por
+  nome normalizado). Os demais ficam bloqueados e ocultos do dashboard.
 
 ## Estrutura
 
@@ -31,7 +35,7 @@ cobranca-bot/
 │   │   ├── graph_client.py# token OAuth2 (client credentials) + sendMail
 │   │   ├── relatorios.py  # relatorio de envios + export CSV
 │   │   └── agendamentos.py# agendamento manual + regua automatica (scheduler)
-│   ├── rules/pendencias.py# trava de STATUS (flag desligada) + painel de pendencias
+│   ├── rules/pendencias.py# TRAVA_STATUS ativa (lista fechada) + painel
 │   ├── api/routes.py      # endpoints REST
 │   ├── templates/         # email_cobranca.html (tabela, CSS inline)
 │   └── web/               # dashboard em abas (Cobrancas/Relatorio/Agendamento)
@@ -70,12 +74,15 @@ botao "Selecionar planilha"), `ID_CLIENT_ID`, `ID_CLIENT_SECRET`,
 
 - Chave de negocio unica: `cd_cliente + titulo`.
 - `hash_linha` calculado de: vl_titulo, juros, multa, total_atualizado,
-  vencimento, email, link_cobranca. **dias_atraso NAO entra no hash**.
+  vencimento, email, link_cobranca, status_cliente. **dias_atraso NAO entra**.
 - `dias_atraso` e **calculado internamente** (hoje - vencimento, nunca
   negativo) via `DIAS_ATRASO_SQL`; o valor da planilha e so fallback.
 - Novo -> insere; hash diferente -> atualiza; mesmo hash -> mantem.
 - Sumiu da carga -> `ativo = 0` (provavel pagamento). **Nunca deletar.**
 - Colunas `Email` e `Link de Cobranca` sao lidas **se existirem**.
+- Aba `INADIMPLENCIA`: cabecalho localizado dinamicamente (linha com
+  CLIENTES e STATUS); cruzamento por nome em `status_cliente`, que entra
+  no hash. Sem a aba, nada fica liberado para envio.
 - Timestamps sempre em **hora local** via `agora_local()` (o
   CURRENT_TIMESTAMP do SQLite e UTC — nao usar em INSERT/UPDATE).
 
@@ -91,14 +98,11 @@ botao "Selecionar planilha"), `ID_CLIENT_ID`, `ID_CLIENT_SECRET`,
 
 ## Pendencias antes de producao
 
-- `TRAVA_STATUS = False` em `app/rules/pendencias.py` — bloquear envio para
-  JURIDICO / NEGATIVADO / ACORDO. Coluna STATUS ainda nao existe na BASE;
-  gancho `bloquear_envio()` pronto.
 - Integracao real do link de cartao (coluna em construcao na planilha).
 - Renovacao do client secret do Azure (expira).
 
-**Nao implementar sem pedido explicito:** trava de STATUS, leitura de outras
-abas, qualquer envio sem acao do operador.
+**Nao implementar sem pedido explicito:** leitura de outras abas alem de
+BASE/INADIMPLENCIA, qualquer envio sem acao do operador.
 
 ## Processo de Git / commits
 
@@ -127,7 +131,7 @@ python -m py_compile app/main.py app/core/*.py app/services/*.py app/rules/*.py 
 ## Build do .exe
 
 ```powershell
-pyinstaller build.spec   # gera dist/BotCobranca.exe
+pyinstaller build.spec   # gera dist/CentralCobranca.exe
 ```
 
 O exe le o `.env` **ao lado dele** e cria `data/` no mesmo diretorio.

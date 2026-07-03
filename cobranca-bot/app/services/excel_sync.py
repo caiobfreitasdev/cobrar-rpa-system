@@ -1,5 +1,6 @@
-"""Le a aba BASE do Excel, detecta alteracoes e faz upsert no SQLite."""
+"""Le as abas BASE e INADIMPLENCIA do Excel, cruza status e faz upsert no SQLite."""
 import hashlib
+import unicodedata
 from datetime import datetime
 from typing import Any, Optional
 
@@ -9,6 +10,9 @@ from app.core.config import get_excel_path
 from app.core.db import db_session, agora_local
 
 SHEET_NAME = "BASE"
+# Aba com o STATUS por cliente (COBRANCA / NEGATIVADO / JURIDICO...).
+# O envio so e liberado para clientes listados nela com status permitido.
+SHEET_STATUS = "INADIMPLENCIA"
 
 # Mapeia colunas do Excel -> campos do banco.
 # Colunas opcionais (Email, Link de Cobranca) sao tratadas separadamente.
@@ -34,8 +38,52 @@ COLUMN_MAP = {
 # todos os titulos como "alterados").
 HASH_FIELDS = [
     "vl_titulo", "juros", "multa", "total_atualizado",
-    "vencimento", "email", "link_cobranca",
+    "vencimento", "email", "link_cobranca", "status_cliente",
 ]
+
+
+def normalizar_nome(valor: Any) -> str:
+    """Normaliza para cruzamento por nome: maiusculas, sem acentos,
+    espacos colapsados. Nao remove sufixos (LTDA etc.) para evitar
+    falsos positivos entre empresas parecidas."""
+    s = str(valor or "").strip().upper()
+    s = "".join(c for c in unicodedata.normalize("NFD", s)
+                if unicodedata.category(c) != "Mn")
+    return " ".join(s.split())
+
+
+def _carregar_status_clientes(caminho: str) -> Optional[dict]:
+    """Le a aba INADIMPLENCIA e retorna {nome_normalizado: STATUS}.
+
+    O cabecalho nao esta na primeira linha: e localizado dinamicamente
+    pela linha que contem CLIENTES e STATUS. Retorna None se a aba
+    nao existir (a carga segue, mas nada fica liberado para envio).
+    """
+    xls = pd.ExcelFile(caminho, engine="openpyxl")
+    aba = next((s for s in xls.sheet_names
+                if normalizar_nome(s) == SHEET_STATUS), None)
+    if aba is None:
+        return None
+
+    bruto = pd.read_excel(caminho, sheet_name=aba, engine="openpyxl", header=None)
+    col_cliente = col_status = linha_hdr = None
+    for i in range(min(10, len(bruto))):  # cabecalho nas primeiras linhas
+        valores = [normalizar_nome(v) for v in bruto.iloc[i]]
+        if "CLIENTES" in valores and "STATUS" in valores:
+            linha_hdr = i
+            col_cliente = valores.index("CLIENTES")
+            col_status = valores.index("STATUS")
+            break
+    if linha_hdr is None:
+        return None
+
+    mapa: dict = {}
+    for _, row in bruto.iloc[linha_hdr + 1:].iterrows():
+        nome = normalizar_nome(row.iloc[col_cliente])
+        status = normalizar_nome(row.iloc[col_status])
+        if nome and nome != "NAN" and status and status != "NAN":
+            mapa[nome] = status
+    return mapa
 
 
 def _clean_str(value: Any) -> Optional[str]:
@@ -85,7 +133,8 @@ def _compute_hash(record: dict) -> str:
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
 
-def _row_to_record(row: pd.Series, has_email: bool, has_link: bool) -> dict:
+def _row_to_record(row: pd.Series, has_email: bool, has_link: bool,
+                   status_map: Optional[dict] = None) -> dict:
     rec: dict = {}
     for excel_col, db_field in COLUMN_MAP.items():
         rec[db_field] = row.get(excel_col)
@@ -109,6 +158,9 @@ def _row_to_record(row: pd.Series, has_email: bool, has_link: bool) -> dict:
     rec["email"] = _clean_str(row.get("Email")) if has_email else None
     rec["link_cobranca"] = _clean_str(row.get("Link de Cobrança")) if has_link else None
 
+    # Cruzamento por nome com a aba INADIMPLENCIA (status do cliente).
+    rec["status_cliente"] = (status_map or {}).get(normalizar_nome(rec["cliente"]))
+
     rec["hash_linha"] = _compute_hash(rec)
     return rec
 
@@ -124,13 +176,14 @@ def load_dataframe() -> pd.DataFrame:
 def sync() -> dict:
     """Executa a sincronizacao completa. Retorna resumo da carga."""
     df = load_dataframe()
+    status_map = _carregar_status_clientes(get_excel_path())
 
     has_email = "Email" in df.columns
     has_link = "Link de Cobrança" in df.columns
 
     records = []
     for _, row in df.iterrows():
-        rec = _row_to_record(row, has_email, has_link)
+        rec = _row_to_record(row, has_email, has_link, status_map)
         # Ignora linhas sem chave de negocio
         if not rec["cd_cliente"] or not rec["titulo"]:
             continue
@@ -157,15 +210,16 @@ def sync() -> dict:
                     INSERT INTO titulos
                     (uf, cd_cliente, cliente, email, titulo, doc_fiscal, vl_titulo,
                      juros, multa, total_atualizado, emissao, vencimento, dias_atraso,
-                     obs, link_cobranca, hash_linha, ativo, created_at, updated_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
+                     obs, link_cobranca, status_cliente, hash_linha, ativo,
+                     created_at, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
                     """,
                     (
                         rec["uf"], rec["cd_cliente"], rec["cliente"], rec["email"],
                         rec["titulo"], rec["doc_fiscal"], rec["vl_titulo"], rec["juros"],
                         rec["multa"], rec["total_atualizado"], rec["emissao"],
                         rec["vencimento"], rec["dias_atraso"], rec["obs"],
-                        rec["link_cobranca"], rec["hash_linha"],
+                        rec["link_cobranca"], rec["status_cliente"], rec["hash_linha"],
                         agora_local(), agora_local(),
                     ),
                 )
@@ -177,7 +231,7 @@ def sync() -> dict:
                         uf = ?, cliente = ?, email = ?, doc_fiscal = ?, vl_titulo = ?,
                         juros = ?, multa = ?, total_atualizado = ?, emissao = ?,
                         vencimento = ?, dias_atraso = ?, obs = ?, link_cobranca = ?,
-                        hash_linha = ?, ativo = 1, updated_at = ?
+                        status_cliente = ?, hash_linha = ?, ativo = 1, updated_at = ?
                     WHERE id = ?
                     """,
                     (
@@ -185,7 +239,8 @@ def sync() -> dict:
                         rec["vl_titulo"], rec["juros"], rec["multa"],
                         rec["total_atualizado"], rec["emissao"], rec["vencimento"],
                         rec["dias_atraso"], rec["obs"], rec["link_cobranca"],
-                        rec["hash_linha"], agora_local(), existing["id"],
+                        rec["status_cliente"], rec["hash_linha"], agora_local(),
+                        existing["id"],
                     ),
                 )
                 alterados += 1
@@ -207,6 +262,8 @@ def sync() -> dict:
                 )
                 baixados += 1
 
+    liberados = sum(1 for r in records
+                    if r["status_cliente"] in ("COBRANCA", "NEGATIVADO"))
     return {
         "novos": novos,
         "alterados": alterados,
@@ -214,4 +271,7 @@ def sync() -> dict:
         "total_carga": len(records),
         "email_disponivel": has_email,
         "link_disponivel": has_link,
+        "status_disponivel": status_map is not None,
+        "titulos_liberados": liberados,
+        "titulos_bloqueados": len(records) - liberados,
     }

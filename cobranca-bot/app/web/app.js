@@ -112,6 +112,9 @@ function renderCarga(resumo) {
     <div class="line"><span>Alterados</span><strong>${c.alterados ?? 0}</strong></div>
     <div class="line"><span>Baixados (provavel pgto)</span><strong>${c.baixados ?? 0}</strong></div>
     <div class="line"><span>Total na carga</span><strong>${c.total_carga ?? 0}</strong></div>
+    ${c.titulos_liberados != null ? `
+    <div class="line"><span>Liberados p/ cobranca</span><strong>${c.titulos_liberados}</strong></div>
+    <div class="line"><span>Bloqueados (ocultos)</span><strong>${c.titulos_bloqueados}</strong></div>` : ""}
   `;
 }
 
@@ -124,6 +127,8 @@ function renderStatus(resumo) {
     <div class="line"><span>Remetente</span><span class="muted">${resumo.graph_sender || "-"}</span></div>
     <div class="line"><span>Coluna Email</span><span class="${c.email_disponivel ? "ok" : "bad"}">${c.email_disponivel ? "Presente" : "Ausente"}</span></div>
     <div class="line"><span>Coluna Link</span><span class="${c.link_disponivel ? "ok" : "bad"}">${c.link_disponivel ? "Presente" : "Ausente"}</span></div>
+    <div class="line"><span>Aba INADIMPLENCIA</span><span class="${c.status_disponivel ? "ok" : "bad"}">${c.status_disponivel ? "Lida" : "Ausente"}</span></div>
+    ${resumo.geral && resumo.geral.bloqueados != null ? `<div class="line"><span>Bloqueados por status</span><span class="muted">${resumo.geral.bloqueados}</span></div>` : ""}
     <button id="btn-graph-test" class="btn btn-secondary" style="margin-top:10px;width:100%;">Testar conexao Graph</button>
     <div id="graph-test-result" class="muted" style="margin-top:8px;"></div>
   `;
@@ -214,6 +219,9 @@ function renderTabela() {
     const sub = temEmail
       ? `${t.cd_cliente ?? ""} &middot; ${t.email}`
       : `${t.cd_cliente ?? ""} &middot; <span class="no-email">sem e-mail</span>`;
+    const stCli = t.status_cliente
+      ? ` <span class="badge-st ${t.status_cliente === "NEGATIVADO" ? "st-neg" : "st-cob"}">${t.status_cliente}</span>`
+      : "";
     const btnEnviar = temEmail
       ? `<button class="btn btn-mini btn-primary row-send" data-id="${t.id}">Enviar</button>`
       : `<button class="btn btn-mini" disabled title="Sem e-mail">Enviar</button>`;
@@ -221,7 +229,7 @@ function renderTabela() {
       <tr>
         <td class="col-check"><input type="checkbox" class="row-check" data-id="${t.id}" ${checked}></td>
         <td class="cel-cliente">
-          <div class="cliente-nome">${t.cliente ?? "-"}</div>
+          <div class="cliente-nome">${t.cliente ?? "-"}${stCli}</div>
           <div class="cliente-sub">${sub}</div>
         </td>
         <td class="cel-titulo">
