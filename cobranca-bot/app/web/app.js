@@ -279,7 +279,7 @@ function _renderThead() {
         <th class="num">Total Atualizado</th>
         <th class="num">Maior Atraso</th>
         <th>Cobranca</th>
-        <th class="col-acao">Acao</th>
+        <th class="col-acao">Cobrar</th>
       </tr>`;
   } else {
     thead.innerHTML = `
@@ -291,7 +291,7 @@ function _renderThead() {
         <th>Vencimento</th>
         <th class="num">Atraso</th>
         <th>Status</th>
-        <th class="col-acao">Acao</th>
+        <th class="col-acao">Cobrar</th>
       </tr>`;
   }
   document.getElementById("check-all").addEventListener("change", (e) => {
