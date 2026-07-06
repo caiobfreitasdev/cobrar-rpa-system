@@ -766,6 +766,12 @@ async function carregarResumo() {
   renderCarga(resumo);
   renderStatus(resumo);
   renderPlanilhaBar(resumo);
+  // Nome da carteira (APP_CARTEIRA no .env) no subtitulo e no titulo da aba
+  if (resumo.carteira) {
+    const sub = document.querySelector(".subtitle");
+    if (sub) sub.textContent = `${resumo.carteira} · contas a receber`;
+    document.title = `Central de Cobrança — ${resumo.carteira}`;
+  }
 }
 
 async function carregarPendencias() {

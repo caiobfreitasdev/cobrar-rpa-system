@@ -52,6 +52,7 @@ def get_resumo():
         "graph_configurado": settings.graph_configured(),
         "graph_sender": settings.GRAPH_SENDER,
         "excel_path": get_excel_path(),
+        "carteira": settings.APP_CARTEIRA,
     }
 
 

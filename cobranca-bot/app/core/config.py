@@ -36,6 +36,11 @@ load_dotenv(BASE_DIR / ".env")
 class Settings:
     EXCEL_PATH: str = os.getenv("EXCEL_PATH", "")
 
+    # Identidade da instancia (permite varias carteiras, uma pasta por empresa)
+    APP_CARTEIRA: str = os.getenv("APP_CARTEIRA", "Sinergas")
+    # Porta do servidor local; mude para rodar duas instancias ao mesmo tempo
+    APP_PORT: int = int(os.getenv("APP_PORT", "8756"))
+
     # Microsoft Graph API (envio de e-mail via client credentials)
     GRAPH_CLIENT_ID: str = os.getenv("ID_CLIENT_ID", "")
     GRAPH_CLIENT_SECRET: str = os.getenv("ID_CLIENT_SECRET", "")

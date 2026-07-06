@@ -8,15 +8,15 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.api.routes import router
-from app.core.config import resource_path, set_excel_path, get_excel_path
+from app.core.config import resource_path, set_excel_path, get_excel_path, settings
 from app.core.db import init_db
 
 WEB_DIR = resource_path("app", "web")
 
 HOST = "127.0.0.1"
-PORT = 8756
+PORT = settings.APP_PORT
 
-app = FastAPI(title="Central de Cobranca IDS")
+app = FastAPI(title=f"Central de Cobranca - {settings.APP_CARTEIRA}")
 app.include_router(router)
 
 # Garante o schema do banco no import (cobre execucao via uvicorn e via exe).
@@ -85,11 +85,21 @@ def main():
     scheduler_thread = threading.Thread(target=_run_scheduler, daemon=True)
     scheduler_thread.start()
 
+    # Modo servico: roda servidor + agendador sem abrir janela.
+    # Uso: CentralCobranca.exe --servico  (ou via Agendador de Tarefas do Windows)
+    if "--servico" in sys.argv:
+        print(
+            f"[{settings.APP_CARTEIRA}] Modo servico: servidor em "
+            f"http://{HOST}:{PORT}/ e agendador ativos. Ctrl+C para encerrar."
+        )
+        server_thread.join()
+        return
+
     try:
         import webview
 
         webview.create_window(
-            "Central de Cobranca IDS",
+            f"Central de Cobranca - {settings.APP_CARTEIRA}",
             f"http://{HOST}:{PORT}/",
             width=1200,
             height=800,
